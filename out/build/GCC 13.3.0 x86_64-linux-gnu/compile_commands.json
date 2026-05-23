@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
+  "command": "/usr/bin/g++ -DMINI_VERSION_CPP=\\\"\\\"  -g -o CMakeFiles/Main_cmake.dir/Main.cpp.o -c /home/khbp/codes/PracticeForCUDA/Main.cpp",
+  "file": "/home/khbp/codes/PracticeForCUDA/Main.cpp",
+  "output": "CMakeFiles/Main_cmake.dir/Main.cpp.o"
+}
+]

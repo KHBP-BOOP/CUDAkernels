@@ -21,3 +21,12 @@ __global__ void tree_reduction(float* input, float* output, int size) {
     }
 
 }
+
+
+void testTreeReduction() {
+    int minGridSize = 0;
+    int blockSize = 0;
+    int shMemSize = blockSize * sizeof(float);
+    cudaOccupancyMaxPotentialBlockSizeVariableSMem(&minGridSize, &blockSize, tree_reduction, shMemSize);
+
+}
