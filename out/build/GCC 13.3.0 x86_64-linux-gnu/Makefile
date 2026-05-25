@@ -117,41 +117,65 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named Main_cmake
+# Target rules for targets named EXEFILE
 
 # Build rule for target.
-Main_cmake: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Main_cmake
-.PHONY : Main_cmake
+EXEFILE: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 EXEFILE
+.PHONY : EXEFILE
 
 # fast build rule for target.
-Main_cmake/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Main_cmake.dir/build.make CMakeFiles/Main_cmake.dir/build
-.PHONY : Main_cmake/fast
+EXEFILE/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/build
+.PHONY : EXEFILE/fast
 
-Main.o: Main.cpp.o
-.PHONY : Main.o
+src/Main.o: src/Main.cpp.o
+.PHONY : src/Main.o
 
 # target to build an object file
-Main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Main_cmake.dir/build.make CMakeFiles/Main_cmake.dir/Main.cpp.o
-.PHONY : Main.cpp.o
+src/Main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/Main.cpp.o
+.PHONY : src/Main.cpp.o
 
-Main.i: Main.cpp.i
-.PHONY : Main.i
+src/Main.i: src/Main.cpp.i
+.PHONY : src/Main.i
 
 # target to preprocess a source file
-Main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Main_cmake.dir/build.make CMakeFiles/Main_cmake.dir/Main.cpp.i
-.PHONY : Main.cpp.i
+src/Main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/Main.cpp.i
+.PHONY : src/Main.cpp.i
 
-Main.s: Main.cpp.s
-.PHONY : Main.s
+src/Main.s: src/Main.cpp.s
+.PHONY : src/Main.s
 
 # target to generate assembly for a file
-Main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Main_cmake.dir/build.make CMakeFiles/Main_cmake.dir/Main.cpp.s
-.PHONY : Main.cpp.s
+src/Main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/Main.cpp.s
+.PHONY : src/Main.cpp.s
+
+src/vecAdd.o: src/vecAdd.cu.o
+.PHONY : src/vecAdd.o
+
+# target to build an object file
+src/vecAdd.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o
+.PHONY : src/vecAdd.cu.o
+
+src/vecAdd.i: src/vecAdd.cu.i
+.PHONY : src/vecAdd.i
+
+# target to preprocess a source file
+src/vecAdd.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.i
+.PHONY : src/vecAdd.cu.i
+
+src/vecAdd.s: src/vecAdd.cu.s
+.PHONY : src/vecAdd.s
+
+# target to generate assembly for a file
+src/vecAdd.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.s
+.PHONY : src/vecAdd.cu.s
 
 # Help Target
 help:
@@ -161,10 +185,13 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... Main_cmake"
-	@echo "... Main.o"
-	@echo "... Main.i"
-	@echo "... Main.s"
+	@echo "... EXEFILE"
+	@echo "... src/Main.o"
+	@echo "... src/Main.i"
+	@echo "... src/Main.s"
+	@echo "... src/vecAdd.o"
+	@echo "... src/vecAdd.i"
+	@echo "... src/vecAdd.s"
 .PHONY : help
 
 

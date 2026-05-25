@@ -4,13 +4,28 @@
 #include <cmath>
 #include <cuda_runtime_api.h>
 
+#define CUDA_CHECK(call)\
+do {\
+    cudaError_t err = call;\
+    if (err != cudaSuccess) {\
+        fprintf(stderr, "CUDA error at %s:%d - %s\n",\
+            __FILE__, __LINE__, cudaGetErrorString(err));\
+        exit(EXIT_FAILURE);\
+    }\
+} while(0)\
+
+
 
 __global__ void vecAdd(float* A, float* B, float* C, int vectorLength)
 {
     int workIndex = threadIdx.x + blockIdx.x*blockDim.x;
-    int step = blockDim.x * gridDim.x;
+    //int step = blockDim.x * gridDim.x;
 
-    for (int i = workIndex; i < vectorLength; i += step) {
+    // for (int i = workIndex; i < vectorLength; i += step) {
+    //     C[i] = A[i] + B[i];
+    // }
+    
+    if (workIndex < vectorLength) {
         C[workIndex] = A[workIndex] + B[workIndex];
     }
 
@@ -26,7 +41,7 @@ void testVecAdd() {
     int blockSize = 0;
     cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, vecAdd, 0, 0);
 
-    int vecLen = 1024;
+    int vecLen = 1 << 24;
     int gridSize = (vecLen + blockSize - 1) / blockSize;
     // //um 统一内存
     // cudaMallocManaged(&nu1, gridSize * blockSize * sizeof(float));
@@ -43,40 +58,57 @@ void testVecAdd() {
     cudaMallocHost(&nu2, gridSize * blockSize * sizeof(float));
     cudaMallocHost(&su, gridSize * blockSize * sizeof(float));
     // initialize nu1 nu2
-    const int size = (1 << 24) * sizeof(float);
-    for (int i = 0; i < size; ++i) {
-        devNu1[i] = sinf(i * 0.0001f);
-        devNu2[i] = cosf(i * 0.0001f);
+    for (int i = 0; i < vecLen; ++i) {
+        nu1[i] = sinf(i * 0.0001f);
+        nu2[i] = cosf(i * 0.0001f);
     }
 
     cudaMalloc(&devNu1, gridSize * blockSize * sizeof(float));
     cudaMalloc(&devNu2, gridSize * blockSize * sizeof(float));
     cudaMalloc(&devSu, gridSize * blockSize * sizeof(float));
 
-    cudaMemcpy(devNu1, nu1, gridSize * blockSize * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(devNu2, nu2, gridSize * blockSize * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemset(devSu, 0, gridSize * blockSize * sizeof(float));
 
 
 
-    cudaEvent_t start, end;
+    cudaEvent_t start, end, kernelStart, kernelEnd;
     cudaEventCreate(&start);
     cudaEventCreate(&end);
+    cudaEventCreate(&kernelStart);
+    cudaEventCreate(&kernelEnd);
 
+    //start to store on GPU
     cudaEventRecord(start, 0);
-    vecAdd<<<gridSize, blockSize>>>(nu1, nu2, su, vecLen);
+
+    cudaMemcpy(devNu1, nu1, gridSize * blockSize * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(devNu2, nu2, gridSize * blockSize * sizeof(float), cudaMemcpyHostToDevice);
+
+    //start to calculate
+    cudaEventRecord(kernelStart, 0);
+    vecAdd<<<gridSize, blockSize>>>(devNu1, devNu2, devSu, vecLen);
+    //end to calculate
+    cudaEventRecord(kernelEnd, 0);
+    //cudaEventSynchronize(kernelEnd);
+    
+    //explicit memory managed
+    cudaMemcpy(su, devSu, gridSize * blockSize * sizeof(float), cudaMemcpyDeviceToHost);
+
+    //end to store on CPU
     cudaEventRecord(end, 0);
     cudaEventSynchronize(end);
-    float durationTime = 0.0f;
+
+    float durationTime = 0.0f, calculateTime = 0.0f;
     cudaEventElapsedTime(&durationTime, start, end);
+    cudaEventElapsedTime(&calculateTime, kernelStart, kernelEnd);
     std::cout << "lasting: " << durationTime << std::endl;
+    std::cout << "calculating: " << calculateTime << std::endl;
 
-    cudaDeviceSynchronize();
 
 
-    //explicit memory managed
-    cudaMemcpy(&su, &devSu, gridSize * blockSize * sizeof(float), cudaMemcpyDeviceToHost);
-
+    cudaEventDestroy(start);
+    cudaEventDestroy(end);
+    cudaEventDestroy(kernelStart);
+    cudaEventDestroy(kernelEnd);
     cudaFree(devNu1);
     cudaFree(devNu2);
     cudaFree(devSu);
@@ -85,8 +117,8 @@ void testVecAdd() {
     cudaFreeHost(su);
 
     //um 统一内存
-    cudaFree(nu1);
-    cudaFree(nu2);
-    cudaFree(su);
+    //cudaFree(nu1);
+    //cudaFree(nu2);
+    //cudaFree(su);
     
 }

@@ -3,16 +3,10 @@
 
 
 int main() {
-#ifdef MINI_VERSION_CPP
-
-    std::cout << "success" << std::endl;
-#else
-    std::cout << "fail" << std::endl;
-
-#endif
 
 
-    //testVecAdd();
+
+    testVecAdd();
 
 
 
