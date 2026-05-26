@@ -1,4 +1,6 @@
 #include "vecAdd.cuh"
+#include "vectorDotProduct.cuh"
+
 #include <iostream>
 
 
@@ -6,7 +8,8 @@ int main() {
 
 
 
-    testVecAdd();
+    //testVecAdd();
+    testVectorDotProduct();
 
 
 

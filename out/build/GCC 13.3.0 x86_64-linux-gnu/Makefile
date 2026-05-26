@@ -177,6 +177,30 @@ src/vecAdd.cu.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.s
 .PHONY : src/vecAdd.cu.s
 
+src/vectorDotProduct.o: src/vectorDotProduct.cu.o
+.PHONY : src/vectorDotProduct.o
+
+# target to build an object file
+src/vectorDotProduct.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o
+.PHONY : src/vectorDotProduct.cu.o
+
+src/vectorDotProduct.i: src/vectorDotProduct.cu.i
+.PHONY : src/vectorDotProduct.i
+
+# target to preprocess a source file
+src/vectorDotProduct.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.i
+.PHONY : src/vectorDotProduct.cu.i
+
+src/vectorDotProduct.s: src/vectorDotProduct.cu.s
+.PHONY : src/vectorDotProduct.s
+
+# target to generate assembly for a file
+src/vectorDotProduct.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.s
+.PHONY : src/vectorDotProduct.cu.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -192,6 +216,9 @@ help:
 	@echo "... src/vecAdd.o"
 	@echo "... src/vecAdd.i"
 	@echo "... src/vecAdd.s"
+	@echo "... src/vectorDotProduct.o"
+	@echo "... src/vectorDotProduct.i"
+	@echo "... src/vectorDotProduct.s"
 .PHONY : help
 
 

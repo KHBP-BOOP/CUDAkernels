@@ -1,7 +1,8 @@
 #include "vecAdd.cuh"
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
+
 #include <cuda_runtime_api.h>
 
 #define CUDA_CHECK(call)\

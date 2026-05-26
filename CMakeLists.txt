@@ -19,6 +19,7 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 set(SCOURSE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/vecAdd.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vectorDotProduct.cu
 )
 
 #生成可执行文件

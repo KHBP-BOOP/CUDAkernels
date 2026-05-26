@@ -1,1 +1,1 @@
-/usr/bin/g++ -g CMakeFiles/EXEFILE.dir/src/Main.cpp.o CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o -o EXEFILE   -L/usr/lib/x86_64-linux-gnu/stubs  -L/usr/lib/gcc/x86_64-linux-gnu/12  -lcudadevrt -lcudart_static -lrt -lpthread -ldl 
+/usr/bin/g++ -g CMakeFiles/EXEFILE.dir/src/Main.cpp.o CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o -o EXEFILE   -L/usr/lib/x86_64-linux-gnu/stubs  -L/usr/lib/gcc/x86_64-linux-gnu/12  -lcudadevrt -lcudart_static -lrt -lpthread -ldl 
