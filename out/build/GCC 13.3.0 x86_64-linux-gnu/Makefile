@@ -129,6 +129,30 @@ EXEFILE/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/build
 .PHONY : EXEFILE/fast
 
+src/DEVICE.o: src/DEVICE.cu.o
+.PHONY : src/DEVICE.o
+
+# target to build an object file
+src/DEVICE.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o
+.PHONY : src/DEVICE.cu.o
+
+src/DEVICE.i: src/DEVICE.cu.i
+.PHONY : src/DEVICE.i
+
+# target to preprocess a source file
+src/DEVICE.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/DEVICE.cu.i
+.PHONY : src/DEVICE.cu.i
+
+src/DEVICE.s: src/DEVICE.cu.s
+.PHONY : src/DEVICE.s
+
+# target to generate assembly for a file
+src/DEVICE.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/DEVICE.cu.s
+.PHONY : src/DEVICE.cu.s
+
 src/Main.o: src/Main.cpp.o
 .PHONY : src/Main.o
 
@@ -152,6 +176,30 @@ src/Main.s: src/Main.cpp.s
 src/Main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/Main.cpp.s
 .PHONY : src/Main.cpp.s
+
+src/blockReduceSum.o: src/blockReduceSum.cu.o
+.PHONY : src/blockReduceSum.o
+
+# target to build an object file
+src/blockReduceSum.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o
+.PHONY : src/blockReduceSum.cu.o
+
+src/blockReduceSum.i: src/blockReduceSum.cu.i
+.PHONY : src/blockReduceSum.i
+
+# target to preprocess a source file
+src/blockReduceSum.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.i
+.PHONY : src/blockReduceSum.cu.i
+
+src/blockReduceSum.s: src/blockReduceSum.cu.s
+.PHONY : src/blockReduceSum.s
+
+# target to generate assembly for a file
+src/blockReduceSum.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.s
+.PHONY : src/blockReduceSum.cu.s
 
 src/vecAdd.o: src/vecAdd.cu.o
 .PHONY : src/vecAdd.o
@@ -210,9 +258,15 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... EXEFILE"
+	@echo "... src/DEVICE.o"
+	@echo "... src/DEVICE.i"
+	@echo "... src/DEVICE.s"
 	@echo "... src/Main.o"
 	@echo "... src/Main.i"
 	@echo "... src/Main.s"
+	@echo "... src/blockReduceSum.o"
+	@echo "... src/blockReduceSum.i"
+	@echo "... src/blockReduceSum.s"
 	@echo "... src/vecAdd.o"
 	@echo "... src/vecAdd.i"
 	@echo "... src/vecAdd.s"

@@ -3,8 +3,16 @@
 #include <iostream>
 #include <cuda_runtime.h>
 
+#define CUDA_CHECK(call) \
+do { \
+    cudaError_t err = call; \
+    if (err != cudaSuccess) { \
+        fprintf(stderr, "error occurs in %s of %d line: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
+        exit(EXIT_FAILURE); \
+    } \
+} while (0) \
 
-__global__ void vectorDotProduct(const float* v1, const float* v2, float* ptrToDevSum, size_t size) {
+__global__ void vectorDotProduct(const float* v1, const float* v2, float* ptrToDevSum, int size) {
     extern __shared__ float sharedArray[];
     int tdx = threadIdx.x;
     int gdx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -37,13 +45,15 @@ __global__ void vectorDotProduct(const float* v1, const float* v2, float* ptrToD
 void testVectorDotProduct() {
     float* vec1 = nullptr;
     float* vec2 = nullptr;
-    float result = 0.0f, *ptrToRes = &result;
+    float* ptrToRes = nullptr;
 
-    size_t vecLen = 1 << 24;
     int minGridSize = 0;
     int blockSize = 0;
-    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, vectorDotProduct, 0, 0);
-    int gridSize = (vecLen + blockSize - 1) / blockSize;
+    CUDA_CHECK(  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, reinterpret_cast<const void*>(vectorDotProduct), 0, 0);  );
+    
+    int vecLen = 1 << 24;
+    int gridSize = (vecLen - 1) / blockSize + 1;
+
 
     cudaMallocHost(&vec1, vecLen * sizeof(float));
     cudaMallocHost(&vec2, vecLen * sizeof(float));
@@ -88,7 +98,7 @@ void testVectorDotProduct() {
         std::cerr << cudaGetErrorString(err) << std::endl;
     }
 
-    cudaMemcpy(&result, ptrToDevSum, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(ptrToRes, ptrToDevSum, sizeof(float), cudaMemcpyDeviceToHost);
     cudaEventRecord(end, 0);
     cudaEventSynchronize(end);
 
@@ -97,6 +107,7 @@ void testVectorDotProduct() {
     cudaEventElapsedTime(&calculateTime, kernelStart, kernelEnd);
     std::cout << "lasting: " << durationTime << std::endl;
     std::cout << "calculating: " << calculateTime << std::endl;
+    std::cout << "result: " << *ptrToRes << std::endl;
 
 
 

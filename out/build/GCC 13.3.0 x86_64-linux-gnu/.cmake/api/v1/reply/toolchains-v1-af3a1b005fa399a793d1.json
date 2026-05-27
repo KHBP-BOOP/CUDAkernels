@@ -33,7 +33,7 @@
 						"gcc_s"
 					]
 				},
-				"path" : "/usr/bin/gcc",
+				"path" : "/usr/bin/x86_64-linux-gnu-gcc-13",
 				"version" : "13.3.0"
 			},
 			"language" : "C",
@@ -51,19 +51,21 @@
 				{
 					"includeDirectories" : 
 					[
-						"/usr/include/c++/12",
-						"/usr/include/x86_64-linux-gnu/c++/12",
-						"/usr/include/c++/12/backward",
-						"/usr/lib/gcc/x86_64-linux-gnu/12/include",
+						"/usr/local/cuda-13.2/targets/x86_64-linux/include/cccl",
+						"/usr/include/c++/13",
+						"/usr/include/x86_64-linux-gnu/c++/13",
+						"/usr/include/c++/13/backward",
+						"/usr/lib/gcc/x86_64-linux-gnu/13/include",
 						"/usr/local/include",
 						"/usr/include/x86_64-linux-gnu",
 						"/usr/include"
 					],
 					"linkDirectories" : 
 					[
-						"/usr/lib/x86_64-linux-gnu/stubs",
+						"/usr/local/cuda-13.2/targets/x86_64-linux/lib/stubs",
+						"/usr/local/cuda-13.2/targets/x86_64-linux/lib",
+						"/usr/lib/gcc/x86_64-linux-gnu/13",
 						"/usr/lib/x86_64-linux-gnu",
-						"/usr/lib/gcc/x86_64-linux-gnu/12",
 						"/usr/lib",
 						"/lib/x86_64-linux-gnu",
 						"/lib"
@@ -80,8 +82,8 @@
 						"gcc"
 					]
 				},
-				"path" : "/usr/bin/nvcc",
-				"version" : "12.0.140"
+				"path" : "/usr/local/cuda-13.2/bin/nvcc",
+				"version" : "13.2.78"
 			},
 			"language" : "CUDA",
 			"sourceFileExtensions" : 
@@ -125,7 +127,7 @@
 						"gcc"
 					]
 				},
-				"path" : "/usr/bin/g++",
+				"path" : "/usr/bin/x86_64-linux-gnu-g++-13",
 				"version" : "13.3.0"
 			},
 			"language" : "CXX",

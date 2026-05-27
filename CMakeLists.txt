@@ -16,14 +16,14 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-set(SCOURSE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/vecAdd.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/vectorDotProduct.cu
-)
-
 #生成可执行文件
-add_executable(EXEFILE ${SCOURSE})
+add_executable(EXEFILE
+    src/Main.cpp
+    src/vecAdd.cu
+    src/vectorDotProduct.cu
+    src/DEVICE.cu
+    src/blockReduceSum.cu
+    )
 
 target_include_directories(EXEFILE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

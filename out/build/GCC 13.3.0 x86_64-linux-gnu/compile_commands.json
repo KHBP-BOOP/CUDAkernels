@@ -1,20 +1,32 @@
 [
 {
   "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
-  "command": "/usr/bin/g++  -I/home/khbp/codes/PracticeForCUDA/include -g -std=gnu++20 -o CMakeFiles/EXEFILE.dir/src/Main.cpp.o -c /home/khbp/codes/PracticeForCUDA/src/Main.cpp",
+  "command": "/usr/bin/x86_64-linux-gnu-g++-13  -I/home/khbp/codes/PracticeForCUDA/include -g -std=gnu++20 -o CMakeFiles/EXEFILE.dir/src/Main.cpp.o -c /home/khbp/codes/PracticeForCUDA/src/Main.cpp",
   "file": "/home/khbp/codes/PracticeForCUDA/src/Main.cpp",
   "output": "CMakeFiles/EXEFILE.dir/src/Main.cpp.o"
 },
 {
   "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
-  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/vecAdd.cu -o CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o",
+  "command": "/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/vecAdd.cu -o CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o",
   "file": "/home/khbp/codes/PracticeForCUDA/src/vecAdd.cu",
   "output": "CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o"
 },
 {
   "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
-  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/vectorDotProduct.cu -o CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o",
+  "command": "/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/vectorDotProduct.cu -o CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o",
   "file": "/home/khbp/codes/PracticeForCUDA/src/vectorDotProduct.cu",
   "output": "CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o"
+},
+{
+  "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
+  "command": "/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/DEVICE.cu -o CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o",
+  "file": "/home/khbp/codes/PracticeForCUDA/src/DEVICE.cu",
+  "output": "CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o"
+},
+{
+  "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
+  "command": "/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu -o CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o",
+  "file": "/home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu",
+  "output": "CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o"
 }
 ]

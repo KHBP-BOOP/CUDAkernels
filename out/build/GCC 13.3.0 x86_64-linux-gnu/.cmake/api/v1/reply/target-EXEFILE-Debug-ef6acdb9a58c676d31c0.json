@@ -25,7 +25,7 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 26,
+				"line" : 20,
 				"parent" : 0
 			},
 			{
@@ -92,7 +92,9 @@
 			"sourceIndexes" : 
 			[
 				1,
-				2
+				2,
+				3,
+				4
 			]
 		}
 	],
@@ -110,11 +112,11 @@
 				"role" : "flags"
 			},
 			{
-				"fragment" : "-L/usr/lib/x86_64-linux-gnu/stubs",
+				"fragment" : "-L/usr/local/cuda-13.2/targets/x86_64-linux/lib/stubs",
 				"role" : "libraryPath"
 			},
 			{
-				"fragment" : "-L/usr/lib/gcc/x86_64-linux-gnu/12",
+				"fragment" : "-L/usr/local/cuda-13.2/targets/x86_64-linux/lib",
 				"role" : "libraryPath"
 			},
 			{
@@ -155,7 +157,9 @@
 			[
 				0,
 				1,
-				2
+				2,
+				3,
+				4
 			]
 		}
 	],
@@ -177,6 +181,18 @@
 			"backtrace" : 1,
 			"compileGroupIndex" : 1,
 			"path" : "src/vectorDotProduct.cu",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/DEVICE.cu",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/blockReduceSum.cu",
 			"sourceGroupIndex" : 0
 		}
 	],

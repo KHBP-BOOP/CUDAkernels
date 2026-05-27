@@ -11,6 +11,9 @@ int main() {
     //testVecAdd();
     testVectorDotProduct();
 
+    float res = 3.0f;
+    
+
 
 
     // int minGridSize = 0;

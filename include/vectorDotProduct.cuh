@@ -4,4 +4,4 @@
 
 void testVectorDotProduct();
 
-__global__ void vectorDotProduct(const float* v1, const float* v2, float* ptrToDevSum, size_t size);
+__global__ void vectorDotProduct(const float* v1, const float* v2, float* ptrToDevSum, int size);
