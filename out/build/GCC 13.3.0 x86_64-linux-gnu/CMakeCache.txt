@@ -30,8 +30,8 @@ CMAKE_COLOR_MAKEFILE:BOOL=ON
 //CUDA architectures
 CMAKE_CUDA_ARCHITECTURES:STRING=75
 
-//No help, variable specified on the command line.
-CMAKE_CUDA_COMPILER:UNINITIALIZED=/usr/local/cuda-13.2/bin/nvcc
+//CUDA compiler
+CMAKE_CUDA_COMPILER:STRING=/usr/local/cuda-13.2/bin/nvcc
 
 //Flags used by the CUDA compiler during all build types.
 CMAKE_CUDA_FLAGS:STRING=
@@ -48,8 +48,8 @@ CMAKE_CUDA_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 //Flags used by the CUDA compiler during RELWITHDEBINFO builds.
 CMAKE_CUDA_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
-//No help, variable specified on the command line.
-CMAKE_CXX_COMPILER:UNINITIALIZED=/usr/bin/x86_64-linux-gnu-g++-13
+//CXX compiler
+CMAKE_CXX_COMPILER:STRING=/usr/bin/x86_64-linux-gnu-g++-13
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -74,8 +74,8 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 //Flags used by the CXX compiler during RELWITHDEBINFO builds.
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
-//No help, variable specified on the command line.
-CMAKE_C_COMPILER:UNINITIALIZED=/usr/bin/x86_64-linux-gnu-gcc-13
+//C compiler
+CMAKE_C_COMPILER:STRING=/usr/bin/x86_64-linux-gnu-gcc-13
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -454,6 +454,9 @@ CUDA_nvrtc_static_LIBRARY:FILEPATH=/usr/local/cuda-13.2/targets/x86_64-linux/lib
 
 //Path to a library.
 CUDA_pcsamplingutil_LIBRARY:FILEPATH=/usr/local/cuda-13.2/targets/x86_64-linux/lib/libpcsamplingutil.so
+
+//Path to a program.
+NCU_EXECUTABLE:FILEPATH=/usr/local/cuda-13.2/bin/ncu
 
 //Value Computed by CMake
 PracticeForCUDA_cmake_BINARY_DIR:STATIC=/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu

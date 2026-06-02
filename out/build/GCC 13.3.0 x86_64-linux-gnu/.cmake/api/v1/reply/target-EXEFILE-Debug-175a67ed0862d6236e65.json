@@ -31,7 +31,7 @@
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 28,
+				"line" : 42,
 				"parent" : 0
 			}
 		]
@@ -93,7 +93,37 @@
 			[
 				1,
 				2,
-				3,
+				3
+			]
+		},
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\""
+				},
+				{
+					"fragment" : "-g -lineinfo"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 2,
+					"path" : "/home/khbp/codes/PracticeForCUDA/include"
+				}
+			],
+			"language" : "CUDA",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "20"
+			},
+			"sourceIndexes" : 
+			[
 				4
 			]
 		}
@@ -191,7 +221,7 @@
 		},
 		{
 			"backtrace" : 1,
-			"compileGroupIndex" : 1,
+			"compileGroupIndex" : 2,
 			"path" : "src/blockReduceSum.cu",
 			"sourceGroupIndex" : 0
 		}

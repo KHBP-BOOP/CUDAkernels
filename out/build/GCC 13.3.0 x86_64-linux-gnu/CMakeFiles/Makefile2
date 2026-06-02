@@ -72,6 +72,7 @@ preinstall:
 
 # The main recursive "clean" target.
 clean: CMakeFiles/EXEFILE.dir/clean
+clean: CMakeFiles/ncu_profile.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -99,6 +100,32 @@ EXEFILE: CMakeFiles/EXEFILE.dir/rule
 CMakeFiles/EXEFILE.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/clean
 .PHONY : CMakeFiles/EXEFILE.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/ncu_profile.dir
+
+# All Build rule for target.
+CMakeFiles/ncu_profile.dir/all: CMakeFiles/EXEFILE.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ncu_profile.dir/build.make CMakeFiles/ncu_profile.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ncu_profile.dir/build.make CMakeFiles/ncu_profile.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu/CMakeFiles" --progress-num=7 "Built target ncu_profile"
+.PHONY : CMakeFiles/ncu_profile.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/ncu_profile.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu/CMakeFiles" 7
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ncu_profile.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu/CMakeFiles" 0
+.PHONY : CMakeFiles/ncu_profile.dir/rule
+
+# Convenience name for target.
+ncu_profile: CMakeFiles/ncu_profile.dir/rule
+.PHONY : ncu_profile
+
+# clean rule for target.
+CMakeFiles/ncu_profile.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ncu_profile.dir/build.make CMakeFiles/ncu_profile.dir/clean
+.PHONY : CMakeFiles/ncu_profile.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

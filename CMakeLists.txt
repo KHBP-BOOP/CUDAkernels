@@ -23,7 +23,21 @@ add_executable(EXEFILE
     src/vectorDotProduct.cu
     src/DEVICE.cu
     src/blockReduceSum.cu
-    )
+)
+
+set_source_files_properties(src/blockReduceSum.cu PROPERTIES COMPILE_FLAGS "-g -lineinfo")
+
+find_program(NCU_EXECUTABLE ncu)
+if(NCU_EXECUTABLE)
+  add_custom_target(ncu_profile
+    COMMAND ${NCU_EXECUTABLE} --set full --kernel-name regex:blockReduceSum
+            --launch-skip 0 --launch-count 1 $<TARGET_FILE:EXEFILE>
+    DEPENDS EXEFILE
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Run Nsight Compute (ncu) for kernel blockReduceSum"
+  )
+endif()
+
 
 target_include_directories(EXEFILE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

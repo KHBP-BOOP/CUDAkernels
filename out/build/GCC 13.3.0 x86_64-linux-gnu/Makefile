@@ -129,6 +129,19 @@ EXEFILE/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/build
 .PHONY : EXEFILE/fast
 
+#=============================================================================
+# Target rules for targets named ncu_profile
+
+# Build rule for target.
+ncu_profile: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ncu_profile
+.PHONY : ncu_profile
+
+# fast build rule for target.
+ncu_profile/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ncu_profile.dir/build.make CMakeFiles/ncu_profile.dir/build
+.PHONY : ncu_profile/fast
+
 src/DEVICE.o: src/DEVICE.cu.o
 .PHONY : src/DEVICE.o
 
@@ -257,6 +270,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... ncu_profile"
 	@echo "... EXEFILE"
 	@echo "... src/DEVICE.o"
 	@echo "... src/DEVICE.i"

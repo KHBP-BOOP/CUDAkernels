@@ -133,7 +133,7 @@ CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: CMakeFiles/EXEFILE.dir/includes_
 CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu
 CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_5) "Building CUDA object CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o"
-	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o -MF CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu -o CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o
+	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -g -lineinfo -MD -MT CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o -MF CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu -o CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o
 
 CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.i"

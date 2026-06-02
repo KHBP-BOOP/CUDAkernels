@@ -8,10 +8,9 @@ int main() {
 
 
 
-    //testVecAdd();
-    testVectorDotProduct();
+    testVecAdd();
+    //testVectorDotProduct();
 
-    float res = 3.0f;
     
 
 

@@ -20,14 +20,22 @@ do {\
 __global__ void vecAdd(float* A, float* B, float* C, int vectorLength)
 {
     int workIndex = threadIdx.x + blockIdx.x*blockDim.x;
-    //int step = blockDim.x * gridDim.x;
+    int step = blockDim.x * gridDim.x;
 
-    // for (int i = workIndex; i < vectorLength; i += step) {
-    //     C[i] = A[i] + B[i];
-    // }
-    
-    if (workIndex < vectorLength) {
-        C[workIndex] = A[workIndex] + B[workIndex];
+    float4* vectorizedA = reinterpret_cast<float4*>(A);
+    float4* vectorizedB = reinterpret_cast<float4*>(B);
+    float4* vectorizedC = reinterpret_cast<float4*>(C);
+
+    for (int i = workIndex; i < vectorLength / 4; i += step) {
+        vectorizedC[i].x = vectorizedA[i].x + vectorizedB[i].x;
+        vectorizedC[i].y = vectorizedA[i].y + vectorizedB[i].y;
+        vectorizedC[i].z = vectorizedA[i].z + vectorizedB[i].z;
+    }
+
+    int tail_start = (vectorLength / 4) * 4;
+    if (tail_start < vectorLength) {
+        int tdx = threadIdx.x;
+        C[tail_start + tdx] = A[tail_start + tdx] + B[tail_start + tdx];
     }
 
 }
@@ -87,6 +95,7 @@ void testVecAdd() {
     //start to calculate
     cudaEventRecord(kernelStart, 0);
     vecAdd<<<gridSize, blockSize>>>(devNu1, devNu2, devSu, vecLen);
+    CUDA_CHECK( cudaGetLastError() );
     //end to calculate
     cudaEventRecord(kernelEnd, 0);
     //cudaEventSynchronize(kernelEnd);

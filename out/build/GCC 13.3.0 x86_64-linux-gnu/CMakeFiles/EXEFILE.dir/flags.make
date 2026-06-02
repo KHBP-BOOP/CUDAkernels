@@ -15,3 +15,5 @@ CXX_INCLUDES = -I/home/khbp/codes/PracticeForCUDA/include
 
 CXX_FLAGS = -g -std=gnu++20
 
+# Custom flags: CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o_FLAGS = -g -lineinfo
+

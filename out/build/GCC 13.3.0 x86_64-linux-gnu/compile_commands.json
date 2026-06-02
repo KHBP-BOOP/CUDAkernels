@@ -25,7 +25,7 @@
 },
 {
   "directory": "/home/khbp/codes/PracticeForCUDA/out/build/GCC 13.3.0 x86_64-linux-gnu",
-  "command": "/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu -o CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o",
+  "command": "/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/EXEFILE.dir/includes_CUDA.rsp -g -std=c++20 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -g -lineinfo -x cu -c /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu -o CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o",
   "file": "/home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu",
   "output": "CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o"
 }
