@@ -7,7 +7,7 @@
 do { \
     cudaError_t err = call; \
     if (err != cudaSuccess) { \
-        fprintf(stderr, "error occurs in %s of %d line: %s", __FILE__, __LINE__, cudaGetErrorString(err)); \
+        fprintf(stderr, "error occurs in %d line of %s : %s", __LINE__, __FILE__, cudaGetErrorString(err)); \
         exit(EXIT_FAILURE); \
     } \
 } while (0) \

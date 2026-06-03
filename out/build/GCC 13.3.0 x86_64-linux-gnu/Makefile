@@ -214,6 +214,30 @@ src/blockReduceSum.cu.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.s
 .PHONY : src/blockReduceSum.cu.s
 
+src/treeReduction.o: src/treeReduction.cu.o
+.PHONY : src/treeReduction.o
+
+# target to build an object file
+src/treeReduction.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o
+.PHONY : src/treeReduction.cu.o
+
+src/treeReduction.i: src/treeReduction.cu.i
+.PHONY : src/treeReduction.i
+
+# target to preprocess a source file
+src/treeReduction.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/treeReduction.cu.i
+.PHONY : src/treeReduction.cu.i
+
+src/treeReduction.s: src/treeReduction.cu.s
+.PHONY : src/treeReduction.s
+
+# target to generate assembly for a file
+src/treeReduction.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/treeReduction.cu.s
+.PHONY : src/treeReduction.cu.s
+
 src/vecAdd.o: src/vecAdd.cu.o
 .PHONY : src/vecAdd.o
 
@@ -281,6 +305,9 @@ help:
 	@echo "... src/blockReduceSum.o"
 	@echo "... src/blockReduceSum.i"
 	@echo "... src/blockReduceSum.s"
+	@echo "... src/treeReduction.o"
+	@echo "... src/treeReduction.i"
+	@echo "... src/treeReduction.s"
 	@echo "... src/vecAdd.o"
 	@echo "... src/vecAdd.i"
 	@echo "... src/vecAdd.s"

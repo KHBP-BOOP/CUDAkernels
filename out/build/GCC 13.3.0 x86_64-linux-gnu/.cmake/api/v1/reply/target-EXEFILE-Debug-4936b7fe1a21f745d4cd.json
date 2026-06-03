@@ -31,7 +31,7 @@
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 42,
+				"line" : 43,
 				"parent" : 0
 			}
 		]
@@ -93,7 +93,8 @@
 			[
 				1,
 				2,
-				3
+				3,
+				5
 			]
 		},
 		{
@@ -189,7 +190,8 @@
 				1,
 				2,
 				3,
-				4
+				4,
+				5
 			]
 		}
 	],
@@ -223,6 +225,12 @@
 			"backtrace" : 1,
 			"compileGroupIndex" : 2,
 			"path" : "src/blockReduceSum.cu",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"path" : "src/treeReduction.cu",
 			"sourceGroupIndex" : 0
 		}
 	],

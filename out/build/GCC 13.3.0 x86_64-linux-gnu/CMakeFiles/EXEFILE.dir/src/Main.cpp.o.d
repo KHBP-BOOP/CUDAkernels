@@ -26,6 +26,7 @@ CMakeFiles/EXEFILE.dir/src/Main.cpp.o: \
  /usr/include/surface_types.h /usr/include/texture_types.h \
  /usr/include/cuda_device_runtime_api.h \
  /home/khbp/codes/PracticeForCUDA/include/vectorDotProduct.cuh \
+ /home/khbp/codes/PracticeForCUDA/include/treeReduction.cuh \
  /usr/include/c++/13/iostream /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
