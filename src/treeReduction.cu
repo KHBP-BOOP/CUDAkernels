@@ -17,6 +17,22 @@ do { \
 } while (0)
 
 
+__device__ void reduceSumInLastWarp(int val, int tdx) {
+    //虽然同一个 Warp 内的线程是同时发射指令的（SIMT 同步），但指令同步不等于数据可见。如果数据被锁死在私有寄存器里，别的线程在物理上就是读不到
+    //在同一个 Warp 内部，32 个线程天生单指令多线程（SIMT）同步执行
+
+    // shMem[tdx] += shMem[tdx + 32];
+    // shMem[tdx] += shMem[tdx + 16];
+    // shMem[tdx] += shMem[tdx + 8];
+    // shMem[tdx] += shMem[tdx + 4];
+    // shMem[tdx] += shMem[tdx + 2];
+    // shMem[tdx] += shMem[tdx + 1];
+
+    for (int offset = 16; offset > 0; offset >>= 1) {
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    }
+}
+
 //grid应配置为(n + blockDim.x * 2 - 1) / (blockDim.x * 2)
 //保证每个block均有不为0的数据且不丢失数据
 __global__ void tree_reduction(float* input, float* output, int size) {
@@ -43,9 +59,9 @@ __global__ void tree_reduction(float* input, float* output, int size) {
     }
 
     //最后一个warp内的规约求和
-    if (tdx < 16) {
-        shMem[tdx] += shMem[tdx + 16];
-        
+    if (tdx < 32) {
+        int val = shMem[tdx];
+        reduceSumInLastWarp(val, tdx);
     }
 
 

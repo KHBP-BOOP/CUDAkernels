@@ -107,3 +107,10 @@ __global__ void tree_reduction(float* input, float* output, int size) {
 - 在数据加载至共享内存的过程中进行一次相加，使得block数量减半（整除情况下），降低GPU调度器压力。
 
 - 步长step <= 32时，由于同一warp内线程的操作本身同步，无需调用__syncthreads()，故单独进行规约
+
+
+![alt text](image-2.png)
+
+### version 3
+
+- 使用__shfl_down_sync()同步原语代替外部函数，使同一warp内的线程直接访问对应的其他线程的寄存器，避免了访问共享内存的开销（寄存器的访问通常只需一个或几个时钟周期，而共享内存通常则需几十个时钟周期）
