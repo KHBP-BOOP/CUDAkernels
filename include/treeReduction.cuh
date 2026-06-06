@@ -4,4 +4,7 @@
 
 __global__ void tree_reduction(float* input, float* output, int size);
 
+template <int BLOCK_SIZE>
+__global__ void tree_reduction(float* input, float* output, int n);
+
 void testTreeReduction();

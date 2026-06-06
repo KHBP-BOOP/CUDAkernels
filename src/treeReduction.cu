@@ -11,72 +11,62 @@
 do { \
     cudaError_t err = call; \
     if (err != cudaSuccess) { \
-        fprintf(stderr, "error occurs in %d line of %s : %s", __LINE__, __FILE__, cudaGetLastError(err)); \
+        fprintf(stderr, "error occurs in %d line of %s : %s", __LINE__, __FILE__, cudaGetErrorString(err)); \
         exit(EXIT_FAILURE); \
     } \
 } while (0)
+//#define testVersion1Or2
 
 
-__device__ void reduceSumInLastWarp(int val, int tdx) {
-    //虽然同一个 Warp 内的线程是同时发射指令的（SIMT 同步），但指令同步不等于数据可见。如果数据被锁死在私有寄存器里，别的线程在物理上就是读不到
-    //在同一个 Warp 内部，32 个线程天生单指令多线程（SIMT）同步执行
-
-    // shMem[tdx] += shMem[tdx + 32];
-    // shMem[tdx] += shMem[tdx + 16];
-    // shMem[tdx] += shMem[tdx + 8];
-    // shMem[tdx] += shMem[tdx + 4];
-    // shMem[tdx] += shMem[tdx + 2];
-    // shMem[tdx] += shMem[tdx + 1];
-
-    for (int offset = 16; offset > 0; offset >>= 1) {
-        val += __shfl_down_sync(0xffffffff, val, offset);
-    }
-}
-
-//grid应配置为(n + blockDim.x * 2 - 1) / (blockDim.x * 2)
-//保证每个block均有不为0的数据且不丢失数据
+template <int BLOCK_SIZE>
 __global__ void tree_reduction(float* input, float* output, int size) {
     extern __shared__ float shMem[];
-    int tdx = threadIdx.x;
-    int gdx = 2 * blockDim.x * blockIdx.x + tdx;
 
+    int tdx = threadIdx.x;
+    int gdx = blockIdx.x * (BLOCK_SIZE * 2) + threadIdx.x;
+
+    // 加载数据到共享内存
     float val = 0.0f;
-    if (gdx < size) {
-        val += input[gdx];
-    }
-    if (gdx + blockDim.x < size) {
-        val += input[gdx];
-    }
+    if (gdx < size)              val += input[gdx];
+    if (gdx + BLOCK_SIZE < size) val += input[gdx + BLOCK_SIZE];
     shMem[tdx] = val;
     __syncthreads();
 
-    //step <= 32 时退出循环
-    for (int step = blockDim.x / 2; step > 32; step /= 2) {
-        if (tdx < step) { //仅需数组的前半部分累加
-            shMem[tdx] += shMem[tdx + step];
-        }
-        __syncthreads(); //保证下一次运算读取的是更新后的数值
-    }
+    // 编译期展开的Block级归约
+    if constexpr (BLOCK_SIZE >= 1024) { if (tdx < 512) shMem[tdx] += shMem[tdx + 512]; __syncthreads(); }
+    if constexpr (BLOCK_SIZE >= 512) { if (tdx < 256) shMem[tdx] += shMem[tdx + 256]; __syncthreads(); }
+    if constexpr (BLOCK_SIZE >= 256) { if (tdx < 128) shMem[tdx] += shMem[tdx + 128]; __syncthreads(); }
+    if constexpr (BLOCK_SIZE >= 128) { if (tdx <  64) shMem[tdx] += shMem[tdx +  64]; __syncthreads(); }
 
-    //最后一个warp内的规约求和
+    // 最后的 Warp 内归约
     if (tdx < 32) {
-        int val = shMem[tdx];
-        reduceSumInLastWarp(val, tdx);
+        float sum = shMem[tdx];
+        if constexpr (BLOCK_SIZE >= 64) {
+            sum += shMen[tdx + 32];
+        }
+        
+        sum += __shfl_down_sync(0xffffffff, sum, 16);
+        sum += __shfl_down_sync(0xffffffff, sum, 8);
+        sum += __shfl_down_sync(0xffffffff, sum, 4);
+        sum += __shfl_down_sync(0xffffffff, sum, 2);
+        sum += __shfl_down_sync(0xffffffff, sum, 1);
+
+        // 由当前 Warp 的 0 号线程直接写回全局内存
+        if (tdx == 0) output[blockIdx.x] = sum;
     }
-
-
-    if (tdx == 0) {
-        output[blockIdx.x] = shMem[0];
-    }
-
 }
+
 
 
 void testTreeReduction() {
     const int size = 1 << 27;
     const int threadsPerBlock = 256;
     // 每一个 Block 处理 threadsPerBlock 个元素
+#ifdef testVersion1Or2
     const int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+#else
+    const int blocksPerGrid = (size + 2 * threadsPerBlock - 1) / (threadsPerBlock * 2);
+#endif
 
     size_t input_bytes = size * sizeof(float);
     size_t output_bytes = blocksPerGrid * sizeof(float);
@@ -103,7 +93,12 @@ void testTreeReduction() {
     cudaEventCreate(&stop);
 
     // 【重要】预热 GPU (Warm-up)，消除驱动懒加载和显卡从省电模式唤醒的延迟
+#ifdef testVersion1Or2
     tree_reduction<<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_input, d_output, size);
+#else
+    tree_reduction<threadsPerBlock><<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_input, d_output, size);
+#endif
+
     cudaDeviceSynchronize();
 
     // 7. 循环执行多次，取平均时间以获得更稳定的带宽数据
@@ -112,7 +107,11 @@ void testTreeReduction() {
     
     cudaEventRecord(start, 0);
     for (int i = 0; i < iterations; ++i) {
+#ifdef testVersion1Or2
         tree_reduction<<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_input, d_output, size);
+#else
+        tree_reduction<threadsPerBlock><<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_input, d_output, size);
+#endif
     }
     cudaEventRecord(stop, 0);
     
