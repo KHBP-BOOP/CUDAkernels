@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <cuda_runtime_api.h>
+#include <nvtx3/nvToolsExt.h>
 
 #define CUDA_CHECK(call) \
 do { \
@@ -15,47 +16,55 @@ do { \
         exit(EXIT_FAILURE); \
     } \
 } while (0)
-//#define testVersion1Or2
+#define testVersion1Or2
 
 
-template <int BLOCK_SIZE>
+__device__ void reduceSumInLastWarp(float* shMem, int tdx) {
+    shMem[tdx] += shMem[tdx + 32]; __syncwarp();
+    shMem[tdx] += shMem[tdx + 16]; __syncwarp();
+    shMem[tdx] += shMem[tdx + 8]; __syncwarp();
+    shMem[tdx] += shMem[tdx + 4]; __syncwarp();
+    shMem[tdx] += shMem[tdx + 2]; __syncwarp();
+    shMem[tdx] += shMem[tdx + 1]; __syncwarp();
+
+}
+
+//grid应配置为(n + blockDim.x * 2 - 1) / (blockDim.x * 2)
+//保证每个block均有不为0的数据且不丢失数据
 __global__ void tree_reduction(float* input, float* output, int size) {
     extern __shared__ float shMem[];
-
     int tdx = threadIdx.x;
-    int gdx = blockIdx.x * (BLOCK_SIZE * 2) + threadIdx.x;
+    int gdx = 2 * blockDim.x * blockIdx.x + tdx;
 
-    // 加载数据到共享内存
     float val = 0.0f;
-    if (gdx < size)              val += input[gdx];
-    if (gdx + BLOCK_SIZE < size) val += input[gdx + BLOCK_SIZE];
+    if (gdx < size) {
+        val += input[gdx];
+    }
+    if (gdx + blockDim.x < size) {
+        val += input[gdx];
+    }
     shMem[tdx] = val;
     __syncthreads();
 
-    // 编译期展开的Block级归约
-    if constexpr (BLOCK_SIZE >= 1024) { if (tdx < 512) shMem[tdx] += shMem[tdx + 512]; __syncthreads(); }
-    if constexpr (BLOCK_SIZE >= 512) { if (tdx < 256) shMem[tdx] += shMem[tdx + 256]; __syncthreads(); }
-    if constexpr (BLOCK_SIZE >= 256) { if (tdx < 128) shMem[tdx] += shMem[tdx + 128]; __syncthreads(); }
-    if constexpr (BLOCK_SIZE >= 128) { if (tdx <  64) shMem[tdx] += shMem[tdx +  64]; __syncthreads(); }
-
-    // 最后的 Warp 内归约
-    if (tdx < 32) {
-        float sum = shMem[tdx];
-        if constexpr (BLOCK_SIZE >= 64) {
-            sum += shMen[tdx + 32];
+    //step <= 32 时退出循环
+    for (int step = blockDim.x / 2; step > 32; step /= 2) {
+        if (tdx < step) { //仅需数组的前半部分累加
+            shMem[tdx] += shMem[tdx + step];
         }
-        
-        sum += __shfl_down_sync(0xffffffff, sum, 16);
-        sum += __shfl_down_sync(0xffffffff, sum, 8);
-        sum += __shfl_down_sync(0xffffffff, sum, 4);
-        sum += __shfl_down_sync(0xffffffff, sum, 2);
-        sum += __shfl_down_sync(0xffffffff, sum, 1);
-
-        // 由当前 Warp 的 0 号线程直接写回全局内存
-        if (tdx == 0) output[blockIdx.x] = sum;
+        __syncthreads(); //保证下一次运算读取的是更新后的数值
     }
-}
 
+    //最后一个warp内的规约求和
+    if (tdx < 32) {
+        reduceSumInLastWarp(shMem, tdx);
+    }
+
+
+    if (tdx == 0) {
+        output[blockIdx.x] = shMem[0];
+    }
+
+}
 
 
 void testTreeReduction() {
@@ -78,11 +87,11 @@ void testTreeReduction() {
 
     // 3. 分配设备（GPU）内存
     float *d_input, *d_output;
-    cudaMalloc(&d_input, input_bytes);
-    cudaMalloc(&d_output, output_bytes);
+    CUDA_CHECK(cudaMalloc(&d_input, input_bytes));
+    CUDA_CHECK(cudaMalloc(&d_output, output_bytes));
 
     // 4. 将输入数据从主机拷贝到设备
-    cudaMemcpy(d_input, h_input.data(), input_bytes, cudaMemcpyHostToDevice);
+    CUDA_CHECK(cudaMemcpy(d_input, h_input.data(), input_bytes, cudaMemcpyHostToDevice));
 
     // 5. 计算动态共享内存的大小（每个线程一个 float）
     size_t sharedMemSize = threadsPerBlock * sizeof(float);
@@ -106,6 +115,13 @@ void testTreeReduction() {
     std::cout << "Running kernel for " << iterations << " iterations..." << std::endl;
     
     cudaEventRecord(start, 0);
+
+
+
+
+    // 使用 NVTX 范围标记我们要测量的区域
+    nvtxRangePushA("Profile_Region");
+
     for (int i = 0; i < iterations; ++i) {
 #ifdef testVersion1Or2
         tree_reduction<<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_input, d_output, size);
@@ -117,6 +133,8 @@ void testTreeReduction() {
     
     // 等待 GPU 核心全部执行完毕
     cudaEventSynchronize(stop);
+    // 结束标记
+    nvtxRangePop();
 
     // 计算总耗时与平均耗时
     float total_milliseconds = 0;

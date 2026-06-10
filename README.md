@@ -223,12 +223,69 @@ __global__ void tree_reduction(float* input, float* output, int size) {
 
 #### yunxing
 
-![alt text](image.png)
-
+![alt text](image-2.png)
 显存占用率提高约20%
 
 
 
 ### final version
 
-- switch
+
+```cuda
+template <int BLOCK_SIZE>
+__global__ void tree_reduction(float* input, float* output, int size) {
+    // 静态断言
+    static_assert((BLOCK_SIZE & (BLOCK_SIZE - 1)) == 0, "BLOCK_SIZE must be a power of 2");
+    static_assert(BLOCK_SIZE >= 32, "BLOCK_SIZE must be at least 32 for efficient warp shuffling");
+
+    extern __shared__ float shMem[];
+
+    int tdx = threadIdx.x;
+    int gdx = blockIdx.x * (BLOCK_SIZE * 2) + threadIdx.x;
+
+    // 加载数据到共享内存
+    float val = 0.0f;
+    if (gdx < size)              val += input[gdx];
+    if (gdx + BLOCK_SIZE < size) val += input[gdx + BLOCK_SIZE];
+    shMem[tdx] = val;
+    __syncthreads();
+
+    // 编译期展开的Block级归约
+    if constexpr (BLOCK_SIZE >= 1024) { if (tdx < 512) shMem[tdx] += shMem[tdx + 512]; __syncthreads(); }
+    if constexpr (BLOCK_SIZE >= 512) { if (tdx < 256) shMem[tdx] += shMem[tdx + 256]; __syncthreads(); }
+    if constexpr (BLOCK_SIZE >= 256) { if (tdx < 128) shMem[tdx] += shMem[tdx + 128]; __syncthreads(); }
+    if constexpr (BLOCK_SIZE >= 128) { if (tdx <  64) shMem[tdx] += shMem[tdx +  64]; __syncthreads(); }
+
+    // 最后的 Warp 内归约
+    if (tdx < 32) {
+        float sum = shMem[tdx];
+        if (tdx + 32 < BLOCK_SIZE) {
+            sum += shMem[tdx + 32];
+        }
+        
+        sum += __shfl_down_sync(0xffffffff, sum, 16);
+        sum += __shfl_down_sync(0xffffffff, sum, 8);
+        sum += __shfl_down_sync(0xffffffff, sum, 4);
+        sum += __shfl_down_sync(0xffffffff, sum, 2);
+        sum += __shfl_down_sync(0xffffffff, sum, 1);
+
+        // 由当前 Warp 的 0 号线程直接写回全局内存
+        if (tdx == 0) output[blockIdx.x] = sum;
+    }
+}
+```
+
+
+
+- 调用时threadsPerBlock的取值 ∈ {32, 64, 128, 256, 512, 1024}
+
+- 运行与性能测试
+
+ncu --launch-count 1 --nvtx --nvtx-include "Profile_Region/" --section MemoryWorkloadAnalysis ./out/build/GCC-13.3.0-x86_64-linux-gnu/EXEFILE
+
+或
+
+ncu --launch-count 1 --nvtx --nvtx-include "Profile_Region/" --metrics gpu__dram_throughput.avg.pct_of_peak_sustained_elapsed,dram__bytes.sum ./out/build/GCC-13.3.0-x86_64-linux-gnu/EXEFILE
+
+
+- 生产环境中优先使用 NVIDIA CUB 库中的 cub::DeviceReduce::Sum，它在各种 GPU 架构上做了针对性优化，通常能达到 90% 以上的带宽利用率，且维护成本为零

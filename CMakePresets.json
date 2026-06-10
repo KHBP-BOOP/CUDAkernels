@@ -2,8 +2,8 @@
     "version": 8,
     "configurePresets": [
         {
-            "name": "GCC 13.3.0 x86_64-linux-gnu",
-            "displayName": "GCC 13.3.0 x86_64-linux-gnu",
+            "name": "GCC-13.3.0-x86_64-linux-gnu",
+            "displayName": "GCC-13.3.0-x86_64-linux-gnu",
             "description": "Using compilers: C = /usr/bin/x86_64-linux-gnu-gcc-13, CXX = /usr/bin/x86_64-linux-gnu-g++-13",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "cacheVariables": {

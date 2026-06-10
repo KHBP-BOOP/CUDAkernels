@@ -16,6 +16,14 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE release)
+endif()
+
+string(APPEND CMAKE_CUDA_FLAGS " -lineinfo -Xptxas=-v")
+
+
+
 #生成可执行文件
 add_executable(EXEFILE
     src/Main.cpp

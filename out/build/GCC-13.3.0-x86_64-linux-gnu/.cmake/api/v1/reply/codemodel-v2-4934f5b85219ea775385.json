@@ -1,0 +1,69 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.28"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "PracticeForCUDA_cmake",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "EXEFILE::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-EXEFILE-Debug-5a7e8bc767401ae35a28.json",
+					"name" : "EXEFILE",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ncu_profile::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ncu_profile-Debug-7c9ff33ab2ae0d3995e9.json",
+					"name" : "ncu_profile",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu",
+		"source" : "/home/khbp/codes/PracticeForCUDA"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 6
+	}
+}
