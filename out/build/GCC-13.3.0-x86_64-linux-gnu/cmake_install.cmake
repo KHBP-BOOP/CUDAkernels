@@ -1,8 +1,8 @@
-# Install script for directory: /home/khbp/codes/PracticeForCUDA
+# Install script for directory: /home/khbp/codes/CUDAkernels
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/khbp/codes/PracticeForCUDA/out/install/GCC-13.3.0-x86_64-linux-gnu")
+  set(CMAKE_INSTALL_PREFIX "/home/khbp/codes/CUDAkernels/out/install/GCC-13.3.0-x86_64-linux-gnu")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -41,14 +41,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "EXEFILE::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-EXEFILE-Debug-5a7e8bc767401ae35a28.json",
+					"jsonFile" : "target-EXEFILE-Debug-d87b016470b436de95b0.json",
 					"name" : "EXEFILE",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "ncu_profile::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-ncu_profile-Debug-7c9ff33ab2ae0d3995e9.json",
+					"jsonFile" : "target-ncu_profile-Debug-b3810dccb15ebfff2aba.json",
 					"name" : "ncu_profile",
 					"projectIndex" : 0
 				}
@@ -58,8 +58,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu",
-		"source" : "/home/khbp/codes/PracticeForCUDA"
+		"build" : "/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu",
+		"source" : "/home/khbp/codes/CUDAkernels"
 	},
 	"version" : 
 	{

@@ -11,9 +11,7 @@ CUDA_FLAGS =  -lineinfo -Xptxas=-v -g -std=c++20 "--generate-code=arch=compute_8
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/khbp/codes/PracticeForCUDA/include
+CXX_INCLUDES = -I/home/khbp/codes/CUDAkernels/include
 
 CXX_FLAGS = -g -std=gnu++20
-
-# Custom flags: CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o_FLAGS = -g -lineinfo
 

@@ -30,7 +30,6 @@ add_executable(EXEFILE
     src/vecAdd.cu
     src/vectorDotProduct.cu
     src/DEVICE.cu
-    src/blockReduceSum.cu
     src/treeReduction.cu
 )
 

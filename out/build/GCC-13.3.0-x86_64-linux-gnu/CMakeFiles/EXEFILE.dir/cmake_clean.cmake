@@ -3,8 +3,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o.d"
   "CMakeFiles/EXEFILE.dir/src/Main.cpp.o"
   "CMakeFiles/EXEFILE.dir/src/Main.cpp.o.d"
-  "CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o"
-  "CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o.d"
   "CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o"
   "CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o.d"
   "CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o"

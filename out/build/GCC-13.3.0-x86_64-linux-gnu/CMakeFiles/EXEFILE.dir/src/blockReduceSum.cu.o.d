@@ -1,4 +1,4 @@
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o : /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu \
+CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o : /home/khbp/codes/CUDAkernels/src/blockReduceSum.cu \
     /usr/include/stdc-predef.h \
     /usr/local/cuda-13.2/bin/../targets/x86_64-linux/include/cuda_runtime.h \
     /usr/local/cuda-13.2/bin/../targets/x86_64-linux/include/crt/host_config.h \

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/khbp/codes/PracticeForCUDA
+CMAKE_SOURCE_DIR = /home/khbp/codes/CUDAkernels
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu
+CMAKE_BINARY_DIR = /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu
 
 # Utility rule file for ncu_profile.
 
@@ -67,8 +67,8 @@ include CMakeFiles/ncu_profile.dir/compiler_depend.make
 include CMakeFiles/ncu_profile.dir/progress.make
 
 CMakeFiles/ncu_profile: EXEFILE
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Run Nsight Compute (ncu) for kernel blockReduceSum"
-	/usr/local/cuda-13.2/bin/ncu --set full --kernel-name regex:blockReduceSum --launch-skip 0 --launch-count 1 /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/EXEFILE
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Run Nsight Compute (ncu) for kernel blockReduceSum"
+	/usr/local/cuda-13.2/bin/ncu --set full --kernel-name regex:blockReduceSum --launch-skip 0 --launch-count 1 /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/EXEFILE
 
 ncu_profile: CMakeFiles/ncu_profile
 ncu_profile: CMakeFiles/ncu_profile.dir/build.make
@@ -83,6 +83,6 @@ CMakeFiles/ncu_profile.dir/clean:
 .PHONY : CMakeFiles/ncu_profile.dir/clean
 
 CMakeFiles/ncu_profile.dir/depend:
-	cd /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/khbp/codes/PracticeForCUDA /home/khbp/codes/PracticeForCUDA /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles/ncu_profile.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/khbp/codes/CUDAkernels /home/khbp/codes/CUDAkernels /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles/ncu_profile.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/ncu_profile.dir/depend
 

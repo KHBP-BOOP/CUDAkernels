@@ -1,4 +1,4 @@
-CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o : /home/khbp/codes/PracticeForCUDA/src/vectorDotProduct.cu \
+CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o : /home/khbp/codes/CUDAkernels/src/vectorDotProduct.cu \
     /usr/include/stdc-predef.h \
     /usr/local/cuda-13.2/bin/../targets/x86_64-linux/include/cuda_runtime.h \
     /usr/local/cuda-13.2/bin/../targets/x86_64-linux/include/crt/host_config.h \
@@ -190,7 +190,7 @@ CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o : /home/khbp/codes/PracticeForC
     /usr/include/c++/13/utility \
     /usr/include/c++/13/bits/stl_relops.h \
     /usr/include/c++/13/initializer_list \
-    /home/khbp/codes/PracticeForCUDA/include/vectorDotProduct.cuh \
+    /home/khbp/codes/CUDAkernels/include/vectorDotProduct.cuh \
     /usr/include/c++/13/iostream \
     /usr/include/c++/13/ostream \
     /usr/include/c++/13/ios \

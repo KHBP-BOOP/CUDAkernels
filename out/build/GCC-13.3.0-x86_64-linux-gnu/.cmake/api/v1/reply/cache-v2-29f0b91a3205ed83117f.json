@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu"
+			"value" : "/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -651,7 +651,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles/pkgRedirects"
+			"value" : "/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -723,7 +723,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/khbp/codes/PracticeForCUDA"
+			"value" : "/home/khbp/codes/CUDAkernels"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -735,7 +735,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "/home/khbp/codes/PracticeForCUDA/out/install/GCC-13.3.0-x86_64-linux-gnu"
+			"value" : "/home/khbp/codes/CUDAkernels/out/install/GCC-13.3.0-x86_64-linux-gnu"
 		},
 		{
 			"name" : "CMAKE_INSTALL_SO_NO_EXE",
@@ -2479,7 +2479,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu"
+			"value" : "/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu"
 		},
 		{
 			"name" : "PracticeForCUDA_cmake_IS_TOP_LEVEL",
@@ -2503,7 +2503,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/khbp/codes/PracticeForCUDA"
+			"value" : "/home/khbp/codes/CUDAkernels"
 		},
 		{
 			"name" : "_CMAKE_LINKER_PUSHPOP_STATE_SUPPORTED",

@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/khbp/codes/PracticeForCUDA
+CMAKE_SOURCE_DIR = /home/khbp/codes/CUDAkernels
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu
+CMAKE_BINARY_DIR = /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -190,30 +190,6 @@ src/Main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/Main.cpp.s
 .PHONY : src/Main.cpp.s
 
-src/blockReduceSum.o: src/blockReduceSum.cu.o
-.PHONY : src/blockReduceSum.o
-
-# target to build an object file
-src/blockReduceSum.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o
-.PHONY : src/blockReduceSum.cu.o
-
-src/blockReduceSum.i: src/blockReduceSum.cu.i
-.PHONY : src/blockReduceSum.i
-
-# target to preprocess a source file
-src/blockReduceSum.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.i
-.PHONY : src/blockReduceSum.cu.i
-
-src/blockReduceSum.s: src/blockReduceSum.cu.s
-.PHONY : src/blockReduceSum.s
-
-# target to generate assembly for a file
-src/blockReduceSum.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.s
-.PHONY : src/blockReduceSum.cu.s
-
 src/treeReduction.o: src/treeReduction.cu.o
 .PHONY : src/treeReduction.o
 
@@ -302,9 +278,6 @@ help:
 	@echo "... src/Main.o"
 	@echo "... src/Main.i"
 	@echo "... src/Main.s"
-	@echo "... src/blockReduceSum.o"
-	@echo "... src/blockReduceSum.i"
-	@echo "... src/blockReduceSum.s"
 	@echo "... src/treeReduction.o"
 	@echo "... src/treeReduction.i"
 	@echo "... src/treeReduction.s"

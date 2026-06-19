@@ -1201,8 +1201,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu",
-		"source" : "/home/khbp/codes/PracticeForCUDA"
+		"build" : "/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu",
+		"source" : "/home/khbp/codes/CUDAkernels"
 	},
 	"version" : 
 	{

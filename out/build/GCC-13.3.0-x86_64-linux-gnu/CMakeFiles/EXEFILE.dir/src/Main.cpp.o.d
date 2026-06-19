@@ -1,6 +1,6 @@
 CMakeFiles/EXEFILE.dir/src/Main.cpp.o: \
- /home/khbp/codes/PracticeForCUDA/src/Main.cpp /usr/include/stdc-predef.h \
- /home/khbp/codes/PracticeForCUDA/include/vecAdd.cuh \
+ /home/khbp/codes/CUDAkernels/src/Main.cpp /usr/include/stdc-predef.h \
+ /home/khbp/codes/CUDAkernels/include/vecAdd.cuh \
  /usr/include/cuda_runtime_api.h /usr/include/crt/host_defines.h \
  /usr/include/builtin_types.h /usr/include/device_types.h \
  /usr/include/driver_types.h /usr/include/vector_types.h \
@@ -25,8 +25,8 @@ CMakeFiles/EXEFILE.dir/src/Main.cpp.o: \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
  /usr/include/surface_types.h /usr/include/texture_types.h \
  /usr/include/cuda_device_runtime_api.h \
- /home/khbp/codes/PracticeForCUDA/include/vectorDotProduct.cuh \
- /home/khbp/codes/PracticeForCUDA/include/treeReduction.cuh \
+ /home/khbp/codes/CUDAkernels/include/vectorDotProduct.cuh \
+ /home/khbp/codes/CUDAkernels/include/treeReduction.cuh \
  /usr/include/c++/13/iostream /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

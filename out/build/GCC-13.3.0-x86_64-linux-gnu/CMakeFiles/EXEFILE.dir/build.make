@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/khbp/codes/PracticeForCUDA
+CMAKE_SOURCE_DIR = /home/khbp/codes/CUDAkernels
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu
+CMAKE_BINARY_DIR = /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu
 
 # Include any dependencies generated for this target.
 include CMakeFiles/EXEFILE.dir/depend.make
@@ -70,25 +70,25 @@ include CMakeFiles/EXEFILE.dir/progress.make
 include CMakeFiles/EXEFILE.dir/flags.make
 
 CMakeFiles/EXEFILE.dir/src/Main.cpp.o: CMakeFiles/EXEFILE.dir/flags.make
-CMakeFiles/EXEFILE.dir/src/Main.cpp.o: /home/khbp/codes/PracticeForCUDA/src/Main.cpp
+CMakeFiles/EXEFILE.dir/src/Main.cpp.o: /home/khbp/codes/CUDAkernels/src/Main.cpp
 CMakeFiles/EXEFILE.dir/src/Main.cpp.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/EXEFILE.dir/src/Main.cpp.o"
-	/usr/bin/x86_64-linux-gnu-g++-13 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/Main.cpp.o -MF CMakeFiles/EXEFILE.dir/src/Main.cpp.o.d -o CMakeFiles/EXEFILE.dir/src/Main.cpp.o -c /home/khbp/codes/PracticeForCUDA/src/Main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/EXEFILE.dir/src/Main.cpp.o"
+	/usr/bin/x86_64-linux-gnu-g++-13 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/Main.cpp.o -MF CMakeFiles/EXEFILE.dir/src/Main.cpp.o.d -o CMakeFiles/EXEFILE.dir/src/Main.cpp.o -c /home/khbp/codes/CUDAkernels/src/Main.cpp
 
 CMakeFiles/EXEFILE.dir/src/Main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/EXEFILE.dir/src/Main.cpp.i"
-	/usr/bin/x86_64-linux-gnu-g++-13 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/khbp/codes/PracticeForCUDA/src/Main.cpp > CMakeFiles/EXEFILE.dir/src/Main.cpp.i
+	/usr/bin/x86_64-linux-gnu-g++-13 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/khbp/codes/CUDAkernels/src/Main.cpp > CMakeFiles/EXEFILE.dir/src/Main.cpp.i
 
 CMakeFiles/EXEFILE.dir/src/Main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/EXEFILE.dir/src/Main.cpp.s"
-	/usr/bin/x86_64-linux-gnu-g++-13 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/khbp/codes/PracticeForCUDA/src/Main.cpp -o CMakeFiles/EXEFILE.dir/src/Main.cpp.s
+	/usr/bin/x86_64-linux-gnu-g++-13 $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/khbp/codes/CUDAkernels/src/Main.cpp -o CMakeFiles/EXEFILE.dir/src/Main.cpp.s
 
 CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o: CMakeFiles/EXEFILE.dir/flags.make
 CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o: CMakeFiles/EXEFILE.dir/includes_CUDA.rsp
-CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o: /home/khbp/codes/PracticeForCUDA/src/vecAdd.cu
+CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o: /home/khbp/codes/CUDAkernels/src/vecAdd.cu
 CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o"
-	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o -MF CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/vecAdd.cu -o CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CUDA object CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o"
+	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o -MF CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o.d -x cu -c /home/khbp/codes/CUDAkernels/src/vecAdd.cu -o CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o
 
 CMakeFiles/EXEFILE.dir/src/vecAdd.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/EXEFILE.dir/src/vecAdd.cu.i"
@@ -100,10 +100,10 @@ CMakeFiles/EXEFILE.dir/src/vecAdd.cu.s: cmake_force
 
 CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o: CMakeFiles/EXEFILE.dir/flags.make
 CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o: CMakeFiles/EXEFILE.dir/includes_CUDA.rsp
-CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o: /home/khbp/codes/PracticeForCUDA/src/vectorDotProduct.cu
+CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o: /home/khbp/codes/CUDAkernels/src/vectorDotProduct.cu
 CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o"
-	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o -MF CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/vectorDotProduct.cu -o CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CUDA object CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o"
+	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o -MF CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o.d -x cu -c /home/khbp/codes/CUDAkernels/src/vectorDotProduct.cu -o CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o
 
 CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.i"
@@ -115,10 +115,10 @@ CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.s: cmake_force
 
 CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o: CMakeFiles/EXEFILE.dir/flags.make
 CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o: CMakeFiles/EXEFILE.dir/includes_CUDA.rsp
-CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o: /home/khbp/codes/PracticeForCUDA/src/DEVICE.cu
+CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o: /home/khbp/codes/CUDAkernels/src/DEVICE.cu
 CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CUDA object CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o"
-	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o -MF CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/DEVICE.cu -o CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CUDA object CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o"
+	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o -MF CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o.d -x cu -c /home/khbp/codes/CUDAkernels/src/DEVICE.cu -o CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o
 
 CMakeFiles/EXEFILE.dir/src/DEVICE.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/EXEFILE.dir/src/DEVICE.cu.i"
@@ -128,27 +128,12 @@ CMakeFiles/EXEFILE.dir/src/DEVICE.cu.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CUDA source to assembly CMakeFiles/EXEFILE.dir/src/DEVICE.cu.s"
 	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
 
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: CMakeFiles/EXEFILE.dir/flags.make
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: CMakeFiles/EXEFILE.dir/includes_CUDA.rsp
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CUDA object CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o"
-	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -g -lineinfo -MD -MT CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o -MF CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/blockReduceSum.cu -o CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o
-
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.i"
-	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE
-
-CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CUDA source to assembly CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.s"
-	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
-
 CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o: CMakeFiles/EXEFILE.dir/flags.make
 CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o: CMakeFiles/EXEFILE.dir/includes_CUDA.rsp
-CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o: /home/khbp/codes/PracticeForCUDA/src/treeReduction.cu
+CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o: /home/khbp/codes/CUDAkernels/src/treeReduction.cu
 CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o: CMakeFiles/EXEFILE.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CUDA object CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o"
-	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o -MF CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o.d -x cu -c /home/khbp/codes/PracticeForCUDA/src/treeReduction.cu -o CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CUDA object CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o"
+	/usr/local/cuda-13.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o -MF CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o.d -x cu -c /home/khbp/codes/CUDAkernels/src/treeReduction.cu -o CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o
 
 CMakeFiles/EXEFILE.dir/src/treeReduction.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/EXEFILE.dir/src/treeReduction.cu.i"
@@ -164,7 +149,6 @@ EXEFILE_OBJECTS = \
 "CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o" \
 "CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o" \
 "CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o" \
-"CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o" \
 "CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o"
 
 # External object files for target EXEFILE
@@ -174,11 +158,10 @@ EXEFILE: CMakeFiles/EXEFILE.dir/src/Main.cpp.o
 EXEFILE: CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o
 EXEFILE: CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o
 EXEFILE: CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o
-EXEFILE: CMakeFiles/EXEFILE.dir/src/blockReduceSum.cu.o
 EXEFILE: CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o
 EXEFILE: CMakeFiles/EXEFILE.dir/build.make
 EXEFILE: CMakeFiles/EXEFILE.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX executable EXEFILE"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX executable EXEFILE"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/EXEFILE.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -190,6 +173,6 @@ CMakeFiles/EXEFILE.dir/clean:
 .PHONY : CMakeFiles/EXEFILE.dir/clean
 
 CMakeFiles/EXEFILE.dir/depend:
-	cd /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/khbp/codes/PracticeForCUDA /home/khbp/codes/PracticeForCUDA /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/PracticeForCUDA/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles/EXEFILE.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/khbp/codes/CUDAkernels /home/khbp/codes/CUDAkernels /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu /home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/CMakeFiles/EXEFILE.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/EXEFILE.dir/depend
 
