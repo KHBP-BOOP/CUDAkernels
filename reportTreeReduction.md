@@ -8,10 +8,14 @@ GPU Kernel 的性能上限由计算量和访存量共同决定，可以用 Roofl
 
 每次读取后做一次加法（1 次 FLOP）
 
-算术强度 =1 FLOP / 4 Byte = 0.25 FLOP/Byte
+算术强度固定，等于 1 FLOP / 4 Byte = 0.25 FLOP/Byte
 （每个 float 元素 4 字节，对应 1 次加法）
 
-这表明 Reduce 是典型的访存密集型（Memory-Bound）操作，优化的核心在于提升内存带宽利用率。
+理论内存带宽上限 256 GB/s ，理论浮点算力上限 14.6 TFLOPS
+
+计算平台计算强度上限  算力上限 / 带宽上限 = 57.0 FLOP/Byte
+
+算术强度比计算强度上限低两个数量级，这表明 Reduce 是典型的访存密集型（Memory-Bound）操作，优化的核心在于提升内存带宽利用率。
 
 
 
@@ -23,7 +27,9 @@ GPU Kernel 的性能上限由计算量和访存量共同决定，可以用 Roofl
 
 指标                数值
 
-理论内存带宽         256 GB/s
+理论内存带宽上限     256 GB/s
+
+理论浮点算力上限     14.6 TFLOPS
 
 L2 Cache 容量       24 MB
 
@@ -180,7 +186,10 @@ __global__ void tree_reduction(float* input, float* output, int size) {
 
 - 优化最后一个warp的规约流程，将数据存入线程寄存器，使用__shfl_down_sync()同步原语进行数据交换，避免访问共享内存的开销（寄存器的访问通常只需一个或几个时钟周期，而共享内存通常则需几十个时钟周期）
 
-#### scr
+索引大于等于offset的线程，由于无法越界访问，故ta们拿到的是自身值，计算结果为2 * val
+
+
+#### src
 
 ```cuda
 template <int BLOCK_SIZE>
@@ -221,7 +230,7 @@ __global__ void tree_reduction(float* input, float* output, int size) {
 ```
 
 
-#### yunxing
+#### 运行
 
 ![alt text](image-2.png)
 显存占用率提高约20%
