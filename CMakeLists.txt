@@ -31,6 +31,7 @@ add_executable(EXEFILE
     src/vectorDotProduct.cu
     src/DEVICE.cu
     src/treeReduction.cu
+    src/SGEMM.cu
 )
 
 set_source_files_properties(src/blockReduceSum.cu PROPERTIES COMPILE_FLAGS "-g -lineinfo")

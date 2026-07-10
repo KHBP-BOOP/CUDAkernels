@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/khbp/codes/CUDAkernels/src/DEVICE.cu" "CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o" "gcc" "CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o.d"
+  "/home/khbp/codes/CUDAkernels/src/SGEMM.cu" "CMakeFiles/EXEFILE.dir/src/SGEMM.cu.o" "gcc" "CMakeFiles/EXEFILE.dir/src/SGEMM.cu.o.d"
   "/home/khbp/codes/CUDAkernels/src/treeReduction.cu" "CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o" "gcc" "CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o.d"
   "/home/khbp/codes/CUDAkernels/src/vecAdd.cu" "CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o" "gcc" "CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o.d"
   "/home/khbp/codes/CUDAkernels/src/vectorDotProduct.cu" "CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o" "gcc" "CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o.d"

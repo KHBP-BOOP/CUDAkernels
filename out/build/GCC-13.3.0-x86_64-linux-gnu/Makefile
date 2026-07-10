@@ -190,6 +190,30 @@ src/Main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/Main.cpp.s
 .PHONY : src/Main.cpp.s
 
+src/SGEMM.o: src/SGEMM.cu.o
+.PHONY : src/SGEMM.o
+
+# target to build an object file
+src/SGEMM.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/SGEMM.cu.o
+.PHONY : src/SGEMM.cu.o
+
+src/SGEMM.i: src/SGEMM.cu.i
+.PHONY : src/SGEMM.i
+
+# target to preprocess a source file
+src/SGEMM.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/SGEMM.cu.i
+.PHONY : src/SGEMM.cu.i
+
+src/SGEMM.s: src/SGEMM.cu.s
+.PHONY : src/SGEMM.s
+
+# target to generate assembly for a file
+src/SGEMM.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/SGEMM.cu.s
+.PHONY : src/SGEMM.cu.s
+
 src/treeReduction.o: src/treeReduction.cu.o
 .PHONY : src/treeReduction.o
 
@@ -278,6 +302,9 @@ help:
 	@echo "... src/Main.o"
 	@echo "... src/Main.i"
 	@echo "... src/Main.s"
+	@echo "... src/SGEMM.o"
+	@echo "... src/SGEMM.i"
+	@echo "... src/SGEMM.s"
 	@echo "... src/treeReduction.o"
 	@echo "... src/treeReduction.i"
 	@echo "... src/treeReduction.s"
