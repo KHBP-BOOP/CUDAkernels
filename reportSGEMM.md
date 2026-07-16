@@ -33,10 +33,21 @@ SGEMM 计算强度I =
 
 ## version 1
 
-thread block级tiling
-矩阵C划分为BM×BN 的分块，每个 Thread Block 负责一块
+**thread block级tiling + thread级tiling**
 
-SGEMM 计算强度I =
+*block级tiling：减少对HBM的访问次数*
+
+- 矩阵C划分为BM * BN的分块，每个 Thread Block 负责一块。相较于naive版本的寄存器从HBM反复取值进行计算，v1在载入了HBM中数据的SMEM中进行。
+
+*thread级tiling实现了寄存器复用*
+
+- 将tileC分为Tm * Tn个格，一个线程跨步计算每个格中的一个元素，共Tm * Tn个元素。不同于1线程1数据+内积矩乘，采用1线程多数据（扩大tileC尺寸）+外积矩乘，并通过寄存器级缓存实现寄存器复用：
+
+借助编译器优化，1个线程加载Tm + TN个数据，完成Tm * Tn次乘加运算FMA，提高了访存比
+
+
+
+SGEMM 算数强度I =
 
 2 * BM * BN * BK / 4 * (BM * BK + BK * BN)
 
@@ -44,34 +55,66 @@ BM = BN = 64  ->  I == 16 FLOPS/Byte
 BM = BN = 128  ->  I == 32 FLOPS/Byte
 
 
+
+BK = 8
+过小 -> K-Loop循环次数过多 -> 块级同步次数过多
+过大 -> SMEM容量占用过多或不足
+
+BLOCK_SIZE = 256
+
+GPU硬件
+      │
+      ▼
+Roofline决定需要AI
+      │
+      ▼
+确定BM、BN
+      │
+      ▼
+Shared Memory容量
+      │
+      ▼
+确定BK
+      │
+      ▼
+每线程寄存器预算
+      │
+      ▼
+确定BLOCK_SIZE
+      │
+      ▼
+得到Tm、Tn
+
 二维grid 一维block256
 
 
+#### 线程重排
+一个tileA，128 * 8，1024个元素，由一维线程块负责，包含256个thread，重排为32 * 8，使用跨步循环实现一个block覆盖tileA完整范围；
+
+一个tileB，8 * 128，1024个元素，由一维线程块负责，包含256个thread，重排为8 * 32，使用跨步循环实现一个block覆盖tileB完整范围；
+
+一个tileC，128 * 128 个元素，由一维线程块负责，包含256个thread，重排为16 * 16，使用跨步循环实现一个block覆盖tileC完整范围；
+
+用 a_thread_x/y 和 b_thread_x/y 的线程重排索引，目的是实现合并内存访问（Coalesced Access）
 
 
-根据C矩阵M*N的尺寸分配线程数量与尺寸（），r0用于A、C矩阵行索引，c0用于B、C矩阵列索引，A矩阵列索引、B矩阵行索引借助K-Loop中的循环变量k
+#### 线程与tile的映射
 
-一个tileA，128 * 8，1024个元素，由一维线程块负责，包含256个thread，重排为32 * 8，使用跨步循环实现一个block覆盖tileA所有元素；
+一个block负责一排As和一列Bs的矩乘，tileAB数据载入SMEM并同步后，开始并行计算。单个线程在Tm、Tn维度的跨步循环过程中，于Ct中累加结果，外层k维度的循环结束后，该线程负责的多行多列（跨步C_BLOCK_X、C_BLOCK_Y）的计算在BK维度上完成；随后进行block级同步；外层K-LOOP结束后，该线程负责的多行多列（跨步C_BLOCK_X、C_BLOCK_Y）的计算在K维度上完成；此时Ct为该thread负责的多排多列（跨步C_BLOCK_X、C_BLOCK_Y）的最终矩乘结果。
 
-一个tileB，8 * 128，1024个元素，由一维线程块负责，包含256个thread，重排为8 * 32，使用跨步循环实现一个block覆盖tileB所有元素；
+每个thread先后读取共K * (BM + BN)
+  
+#### 外积矩阵乘法
 
+相较于内积法，GEMM变为多个秩-1矩阵的累加，便于向量化指令、并行计算
 
-
-用 a_thread_x/y 和 b_thread_x/y 的线程重排索引，目的是为了实现合并内存访问（Coalesced Access）
-
-一个block负责一排As和一列Bs的矩乘，一个线程沿完整K维度计算，通过循环实现跨步覆盖，并在simt架构的前提下借助多个线程实现局部覆盖（单排As与单列Bs）
-tileAB数据载入SMEM并同步后，开始并行计算。单个线程在Tm、Tn维度的跨步循环过程中，于Ct中累加结果，外层k维度的循环结束后，该线程负责的多行多列的计算在BK维度上完成；随后进行block级同步；外层K-LOOP结束后，该线程负责的多行多列的计算在K维度上完成；
-Ct为该thread负责的多排多列的最终矩乘结果，
-
-tileC分为64个格，一个线程跨步计算每个格中的一个元素，共64个元素，由寄存器中的Ct变量存储。
 
 ？？？？：
-1616 thread借助循环处理128128个元素，目的？
+
+用 a_thread_x/y 和 b_thread_x/y 的线程重排索引，为什么能实现合并内存访问（Coalesced Access）？
 
 
-为什么block采用一维？为什么256个thread？
-瓦片A 瓦片B 尺寸设定：
-BK如何确定
+## version 2
 
 
 

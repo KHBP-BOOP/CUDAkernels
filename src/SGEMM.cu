@@ -31,13 +31,17 @@ __global__ void sgemm_block_tiling(float* A, float* B, float* C,
 
     // 16 * 16 threads 负责 128 * 128 个元素
     // 每个线程负责 Tm×Tn 个输出元素
-    constexpr int Tm = BM / C_BLOCK_Y;  // = 8 跨步覆盖128行
-    constexpr int Tn = BN / C_BLOCK_X;  // = 8 跨步覆盖128列 
+    constexpr int Tm = BM / C_BLOCK_Y;  // = 8 跨步覆盖128行 由BM、BLOCK_SIZE决定
+    constexpr int Tn = BN / C_BLOCK_X;  // = 8 跨步覆盖128列 由BN决定
     float Ct[Tm][Tn] = {0.0f};
 
     // K-Loop
     //一次循环对应
     for (int k = 0; k < K; k += BK) {
+
+        //r0用于A、C矩阵行索引，c0用于B、C矩阵列索引
+        //A矩阵列索引、B矩阵行索引借助K-Loop中的循环变量k
+
         // 将tileA数据载入SMEM（使用跨步循环覆盖 BM 行）
         #pragma unroll
         for (int i = a_thread_y; i < BM; i += A_BLOCK_Y) { //BM 128
@@ -76,7 +80,7 @@ __global__ void sgemm_block_tiling(float* A, float* B, float* C,
             }
         }
 
-        __syncthreads(); //避免在本轮循环计算完成前，SMEM被下一轮数据覆盖的情况
+        __syncthreads(); //避免在本轮循环计算完成前，SMEM被下一轮数据覆盖
     }
 
     // 写回结果
