@@ -148,7 +148,7 @@ __global__ void sgemm_block_tiling(float* A, float* B, float* C,
 
 借助编译器优化，1个线程加载Tm + TN个数据，完成Tm * Tn次乘加运算FMA，提高了访存比
 
-
+为什么不叫tile级分块？？？
 
 
 SGEMM 算数强度I =
@@ -221,7 +221,9 @@ Shared Memory容量
 
 每个线程在Tn、Tm、BK维度的循环过程中，于Ct中累加结果，循环结束后，Ct包含As中**跨C_BLOCK_Y步等距**的多行与Bs中**跨C_BLOCK_X步等距**的多列之间的矩乘结果，它是BK维度上的，并不是对应K维度的最终可输出结果；  
 每个block中所有线程同步至各自Ct计算完毕的阶段，此时每个tileA、B均完成计算，结果被浓缩进入每个线程的Ct数组； 
+
 *进行block级别同步，是为保证先完成本次tileA、B的计算，再进行下一个tileA、B的计算，否则会出现将下一个tileA、B的数据计算结果存入本次Ct的错误*  
+
 继续维度为K、粒度为BK的遍历；  
 外层K-LOOP结束后，每个线程负责的多行多列（跨步C_BLOCK_X、C_BLOCK_Y）的计算在K维度上完成；此时Ct为该thread负责的多排多列（跨步C_BLOCK_X、C_BLOCK_Y）的最终矩乘结果。
 
@@ -243,6 +245,75 @@ kernel 执行结束时所有线程会自动在块内隐式同步退出
 
 ## version 2
 
+
+template <int BM, int BN, int BK, int TM, int TN>
+__global__ void sgemm_thread_tiling(const float *A, const float *B, float *C,
+                                    int M, int N, int K)
+{
+    __shared__ float As[BM][BK];
+    __shared__ float Bs[BK][BN];
+
+    int tid = threadIdx.x;
+
+    // 每个线程在 C 中负责 TM×TN 的子块
+    const int C_BLOCK_X = BN / TN;
+    const int C_BLOCK_Y = BM / TM;
+    int c_thread_x = tid / (BN / TN);
+    int c_thread_y = tid / (BM / TM);
+    int thread_row = c_thread_x * TM;
+    int thread_col = c_thread_y * TN;
+
+    // 寄存器存储
+    float a_frag[TM];
+    float b_frag[TN];
+    float c_frag[TM][TN] = {0.0f};
+
+    int by = blockIdx.y, bx = blockIdx.x;
+
+    for (int bk = 0; bk < K; bk += BK)
+    {
+        // 协作加载 A、B 到 Shared Memory（省略边界检查）
+        load_tile_A(A, As, by, bk, tid, M, K);
+        load_tile_B(B, Bs, bx, bk, tid, K, N);
+        __syncthreads();
+
+        // 外积累加
+        for (int k = 0; k < BK; k++)
+        {
+            // 从 Shared Memory 加载到寄存器
+            for (int i = 0; i < TM; i++)
+            {
+                a_frag[i] = As[thread_row + i][k];
+                // 同行的16个线程计算出的thread_row相同，执行相同操作，即16个线程读取As中的同一个地方、再将数据载入a_frag数组
+                // 每一行的16个线程共享一个a_frag数组，一个block有8个a_frag数组
+            }
+            for (int j = 0; j < TN; j++)
+            {
+                b_frag[j] = Bs[k][thread_col + j];
+                // 同列的16个线程计算出的thread_col相同，执行相同操作，即读取Bs中的同一个地方、再将数据载入b_frag数组
+                // 每一列的16个线程共享一个b_frag数组，一个block有8个b_frag数组
+            }
+            // 寄存器上做外积
+            for (int i = 0; i < TM; i++)
+                for (int j = 0; j < TN; j++)
+                    c_frag[i][j] += a_frag[i] * b_frag[j];
+        }
+        __syncthreads();
+    }
+
+    // 写回 Global Memory
+    for (int i = 0; i < TM; i++)
+    {
+        int r = by * BM + i * C_BLOCK_Y + c_thread_y;
+        for (int j = 0; j < TN; j++)
+        {
+            int c = bx * BN + j * C_BLOCK_X + c_thread_x;
+            if (r < M && c < N)
+                C[r * N + c] = c_frag[i][j];
+        }
+    }
+}
+
 v1中，外积方式计算 Ct[i][j] += As[row][p] * Bs[p][col] 时，编译器可能会为 As[row][p] 的重复读取做一定优化，但远不如v2中手工寄存器分块可控且高效
 
 
@@ -252,12 +323,29 @@ v1中，外积方式计算 Ct[i][j] += As[row][p] * Bs[p][col] 时，编译器�
 v1计算过程：  
 As数组中待处理的16个元素、Bs数组中待处理的16个元素进行外积运算，该过程以循环方式串行执行，直到As、Bs计算结束；
 v2：
-16*16个线程并行执行，将As、Bs中待处理的16个元素（它们是跨步等距的）运输至各自线程私有的寄存器数组（此过程存在同一行/列的线程执行相同事务的情况）；依次循环TM、Tn次，将As、Bs的完整一列/行各自寄存器数组，接着串行计算。  
+16*16个线程并行执行，将As、Bs中待处理的16个元素（它们是跨步等距的）运输至各自线程私有的寄存器数组（此过程存在同一行/列的线程执行相同事务的情况，或者说这些线程共享同一个register file）；依次循环TM、Tn次，将As、Bs的完整一列/行各自寄存器数组，接着串行计算。  
 内层循环沿BK维度遍历时，每次从共享内存加载TM个A元素和TN个B元素到寄存器a_frag、b_frag，并在寄存器上做外积累加；沿BK维度、步长为1的遍历结束后，该tileA、B的计算结束，block级同步结束后，进行下一组tileA、B的计算。
 
 v2相较于v1，写回结果时采用了不同分块策略，
 
+## version 3
+
+优化共享内存分块载入寄存器数组部分。
+
+通过 warp 内 shuffle 让一条线程加载的数据被同 warp 的其它线程复用：
+把坐标系从 “thread 在 block 内的位置” 换成了 “warp + lane 在 block 内的位置”，
 
 
 
 
+
+？？？
+TM TN x y 在哪一维度列不等式？
+
+前面版本warp为2*16尺寸，此版本进行了优化？
+是因为在共享内存分块载入寄存器数组部分中，同一warp内、执行相同指令、共享同一寄存器的线程数量变少了？
+
+
+                    // 2*16尺寸的warp会不会更快？
+                    
+            //存在的warp divergence是否大幅影响性能？
