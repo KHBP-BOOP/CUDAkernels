@@ -329,23 +329,21 @@ v2：
 v2相较于v1，写回结果时采用了不同分块策略，
 
 ## version 3
+block 级 tiling + warp 级 tiling + 线程级寄存器 tiling
 
-优化共享内存分块载入寄存器数组部分。
+优化共享内存分块载入寄存器数组部分。核心为通过 warp 内 shuffle 让一条线程加载的数据被同 warp 的其它线程复用。
 
-通过 warp 内 shuffle 让一条线程加载的数据被同 warp 的其它线程复用：
-把坐标系从 “thread 在 block 内的位置” 换成了 “warp + lane 在 block 内的位置”，
+具体实现：  
+坐标系从 “thread 在 block 内的位置”换成了“warp + lane 在 block 内的位置”；  
+从warp尺寸2 * 16、block内全部线程进行读操作  
+换成了  
+warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM + b * TN)*个线程进行读操作
 
-
-
-
+!!!
+彻底消除 divergence.
 
 ？？？
 TM TN x y 在哪一维度列不等式？
 
-前面版本warp为2*16尺寸，此版本进行了优化？
-是因为在共享内存分块载入寄存器数组部分中，同一warp内、执行相同指令、共享同一寄存器的线程数量变少了？
-
-
-                    // 2*16尺寸的warp会不会更快？
-                    
-            //存在的warp divergence是否大幅影响性能？
+存在的warp divergence是否大幅影响性能？
+写回过程为合并访问？
