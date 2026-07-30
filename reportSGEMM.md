@@ -3,6 +3,13 @@
 
 ***GEMM 优化的本质是用寄存器和共享内存（Shared Memory）挡住对全局内存（Global Memory）的访问。*** 
 
+参考资料：  
+https://docs.nvidia.com/cuda/cuda-programming-guide/contents.html  
+https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf  
+https://docs.nvidia.com/cuda/cuda-c-programming-guide/contents.html  
+
+v?及之后版本的代码均为原创。
+
 C = A @ B
 
 $A \in \mathbb{R}^{M \times K}$
@@ -23,6 +30,12 @@ $C \in \mathbb{R}^{M \times N}$
 分块思想贯穿始终
 
 ***每下降一个内存层次，就对应线程层次的一层分块。***
+
+## 最终version
+
+
+# 优化过程
+
 
 ## Naive版本
 
@@ -331,6 +344,145 @@ v2相较于v1，写回结果时采用了不同分块策略，
 ## version 3
 block 级 tiling + warp 级 tiling + 线程级寄存器 tiling
 
+template <int BM, int BN, int BK,
+    int BLOCK_SIZE, int Wx, int Wy,
+    int TM, int TN>
+__global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, int M, int N, int K)
+{
+    __shared__ float As[BM][BK];
+    __shared__ float Bs[BK][BN];
+
+    int tid = threadIdx.x;
+    int by = blockIdx.y, bx = blockIdx.x;
+
+    // 寄存器
+    float a_frag[TM];
+    float b_frag[TN];
+    float c_frag[TM][TN] = {0.0f};
+
+
+    int warp_id = tid >> 5; // tid / 32
+    int lane_id = tid & 31; // tid % 32
+
+    const int WARP_Y = Wy; // 4
+    const int WARP_X = Wx; // 8
+
+    // 每一列 C_BLOCK_Y / WARP_Y 个 warp tile
+    const int warp_tile_per_col = C_BLOCK_Y / WARP_Y;
+    // 每一行 C_BLOCK_X / WARP_X 个 warp tile
+    const int warp_tile_per_row = C_BLOCK_X / WARP_X;
+
+    // warp 在 Block 中的位置（4×2 排列）
+    int warp_row = warp_id / warp_tile_per_row; // / 2   M 方向：0~3
+    int warp_col = warp_id % warp_tile_per_row; // % 2   N 方向：0~1
+
+    // lane 在 warp 内的位置（4×8 排列，行主序）
+    int lane_row = lane_id / WARP_X; // M 方向：0~3
+    int lane_col = lane_id % WARP_X; // N 方向：0~7
+
+    for (int bk = 0; bk < K; bk += BK)
+    {
+
+        // 协作加载 A、B 到 Shared Memory
+        load_tile_A<BM, BK, BLOCK_SIZE>(A, As, M, K, by * BM, bk, tid);
+        load_tile_B<BN, BK, BLOCK_SIZE>(B, Bs, K, N, bx * BN, bk, tid);
+
+        __syncthreads();
+
+        // 外积累加
+        for (int k = 0; k < BK; k++) {
+
+            // 从 Shared Memory 加载到寄存器
+
+            //1个线程读取1个数据至a_frag
+            a_frag[lane_col] = As[warp_row * WARP_Y * TM + lane_row * TM + lane_col][k];
+
+            #pragma unroll
+            for (int i = 0; i < WARP_X; i++) {
+                
+                
+                a_frag[i] = __shfl_sync(0xffffffff, a_frag[i], i, 8);
+            }
+
+            //1个线程读取2个数据至b_frag
+            b_frag[lane_row * 2] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2];
+            b_frag[lane_row * 2 + 1] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2 + 1];
+ 
+            
+            // 广播 b_frag
+            #pragma unroll
+            for (int j = 0; j < TN; j += 2) {
+                
+                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X);
+                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X);
+
+            }
+
+            #pragma unroll
+            for (int j = 0; j < WARP_Y; j++) {
+                
+                b_frag[j * 2]     = __shfl_sync(0xffffffff, b_frag[j * 2],     j * WARP_X + lane_col);
+                b_frag[j * 2 + 1] = __shfl_sync(0xffffffff, b_frag[j * 2 + 1], j * WARP_X + lane_col);
+            }
+
+
+
+            // if (lane_col == 0) {
+
+            //     for (int i = 0; i < TM; i++) {
+            //         a_frag[i] = As[warp_row * WARP_Y * TM + lane_row * TM + i][k];
+            //     }
+            // }
+            
+
+            // if (lane_row == 0) {
+            //     for (int j = 0; j < TN; j++) {
+            //         b_frag[j] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + j];
+            //     }
+            // }
+
+            // // 广播 a_frag
+            // #pragma unroll
+            // for (int i = 0; i < TM; i++) {
+            //     a_frag[i] = __shfl_sync(0xffffffff, a_frag[i], lane_row * WARP_X);
+            //     //每一行线程的源线程的索引跨步等距
+                
+            //     //a_frag[i] = __shfl_sync(0xffffffff, a_frag[i], 0, 8);
+            // }
+
+            // // 广播 b_frag
+            // #pragma unroll
+            // for (int j = 0; j < TN; j++) {
+            //     b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], lane_col);
+            //     //每一列线程的源线程的索引相邻
+            // }
+
+            // 寄存器上做外积
+            for (int i = 0; i < TM; i++) {
+                for (int j = 0; j < TN; j++) {
+                    c_frag[i][j] += a_frag[i] * b_frag[j];
+                }
+            }
+        }
+
+        __syncthreads();
+    }
+
+    
+    // 写回用 warp/lane 坐标，与 compute 一致
+    // 一个线程负责一个数据间相邻的8*8部分
+    int base_row = by * BM + warp_row * WARP_Y * TM + lane_row * TM;
+    int base_col = bx * BN + warp_col * WARP_X * TN + lane_col * TN;
+    for (int i = 0; i < TM; i++) {
+        int r = base_row + i;
+        for (int j = 0; j < TN; j++) {
+            int c = base_col + j;
+            if (r < M && c < N) C[r * N + c] = c_frag[i][j];
+        }
+    }
+
+}
+
 优化共享内存分块载入寄存器数组部分。核心为通过 warp 内 shuffle 让一条线程加载的数据被同 warp 的其它线程复用。
 
 具体实现：  
@@ -339,11 +491,28 @@ block 级 tiling + warp 级 tiling + 线程级寄存器 tiling
 换成了  
 warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM + b * TN)*个线程进行读操作
 
-!!!
+4*8 进行读取操作的线程数量最少
+
+!!! micro-optimization：
 彻底消除 divergence.
 
 ？？？
 TM TN x y 在哪一维度列不等式？
 
-存在的warp divergence是否大幅影响性能？
-写回过程为合并访问？
+
+version 4
+
+向量化 + 
+优化写回过程 + bank c
+
+NVIDIA GeForce RTX 4060 Laptop GPU 静态SMEM上限 48KB（即 49,152 字节）  
+故进行分片（？？？什么分片）
+
+
+
+？？？
+GLM -》                     SMEM -》        REG
+tileA 128\*2 tileB 8*32     4\*8warp tile
+    《-                         《-
+                            
+写回过程代码的正确、高效性？
