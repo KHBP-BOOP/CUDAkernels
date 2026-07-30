@@ -496,23 +496,43 @@ warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM
 !!! micro-optimization：
 彻底消除 divergence.
 
+
+## version 4
+
+向量化 +  
+优化写回过程 + bank c +  
+benchmark
+
+将寄存器中8*8个数据float4向量化，每个线程每次循环执行2次float4类型数据的读写，共处理32B数据,同一warp的32个thread同时处理2 * 16 * 32B数据;
+8个warp循环8次，覆盖128 * 128个float数据
+
+
+details：
+
+tileAB载入SMEM时，向量化数据的传输分两个阶段，STS.128过程一定16B对齐，LDG.128过程是否对齐由K决定，若K为4的倍数（最优情况下是 BK=8 的倍数）则16B对齐；  
+
+向量化数据实现合并访问；  
+
+向量化时，用 make_float4() 而不是 *reinterpret_cast<float4*>(&)，因为取地址会强制将c_frag从寄存器溢出到local memory，  
+寄存器无地址，不应该对寄存器中的数据取地址，否则编译器会将数据溢出至局部内存，在类似的寄存器直接写入HBM的情景中会产生额外开销；  
+
+
+
+
+
+
+线程重排情况
+GLM   ------------》   SMEM   -------》   REG
+tileA 128\*2 tileB 8*32     4\*8warp tile
+
+            《------------------
+                4\*8warp tile  
+
+
+## version5
+
+
+
 ？？？
 TM TN x y 在哪一维度列不等式？
 
-
-version 4
-
-向量化 + 
-优化写回过程 + bank c
-
-NVIDIA GeForce RTX 4060 Laptop GPU 静态SMEM上限 48KB（即 49,152 字节）  
-故进行分片（？？？什么分片）
-
-
-
-？？？
-GLM -》                     SMEM -》        REG
-tileA 128\*2 tileB 8*32     4\*8warp tile
-    《-                         《-
-                            
-写回过程代码的正确、高效性？

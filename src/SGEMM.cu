@@ -6,7 +6,7 @@
 
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
-template <int BM, int BK, int BLOCK_SIZE>
+template <int BM = 128, int BK = 8, int BLOCK_SIZE>
 __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
                             int M, int K, int r0, int k, int tid)
 {
@@ -25,14 +25,15 @@ __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
         int r = r0 + i, c = k + a_thread_x * 4;
 
         //计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
-        float4 temp = (r < M && c + 3 < K) ? FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f);
+        //为确保LDG.128的16B对齐，K必须是4的倍数（最优情况下是 BK=8 的倍数）
+        float4 temp = (r < M && c + 3 < K) ? FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
 
         // 同一block内，具体一次K维度的循环中，所有thread的r0一定、k一定
         FLOAT4(As[i][a_thread_x * 4]) = temp; // STS.128
     }
 }
 
-
+// 协作加载 tileB: 全局内存 → Shared Memory
 // c0 = blockIdx.x * BN,  k = 当前 K 维度起点
 template <int BN, int BK, int BLOCK_SIZE>
 __device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
@@ -53,7 +54,8 @@ __device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
         int r = k + b_thread_y, c = c0 + j * 4;
 
         //计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
-        float4 temp = (r < K && c + 3 < N) ? FLOAT4(B[r * N + c]) : make_float4(0.f, 0.f, 0.f, 0.f);
+        //为确保LDG.128的16B对齐，K必须是4的倍数（最优情况下是 BK=8 的倍数）
+        float4 temp = (r < K && c + 3 < N) ? FLOAT4(B[r * N + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
 
         // 同一block内，具体一次K维度的循环中，所有thread的c0一定、k一定
         FLOAT4(Bs[b_thread_y][j * 4]) = temp; // STS.128
@@ -160,79 +162,40 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
     }
 
 
-    //写回全局内存 - 方案一
-
-    // 寄存器写回SMEM
-    // 用 warp/lane 坐标，与compute部分一致
-
-    // 一个线程负责一个数据间相邻的8*8部分
-    constexpr int Cs_Y = WARP_Y * TM;
-    __shared__ float Cs[Cs_Y][BN]; // 32 * 128    
-
-    // 延续从SMEM加载到寄存器过程的warp级分块方案，由两个4 * 8warp tile以行优先方式排列组成尺寸为4 * 16的tile
-    // 上文中tile的行、列索引：
-    int thread_row_in_warp_tile = lane_row; // 0 ~ 3
-    int thread_col_in_warp_tile = warp_col * WARP_X + lane_col; // 0 ~ 15
-
-    constexpr int CHUNK_NUM = BM / Cs_Y; // BM、BN为自取值，无需向上取整除法
-    for (int chunk = 0; chunk < CHUNK_NUM; ++chunk) {
-
-        if (warp_row == chunk) {
-
-            // 寄存器写回SMEM过程
-            for (int m = 0; m < TM; m++) {
-                    
-                int r = thread_row_in_warp_tile * TM + m;
-                for (int n = 0; n < TN; n++) {
-                    
-                    int c = thread_col_in_warp_tile * TN + n;
-                    Cs[r][c] = (r < Cs_Y && c < BN) ? c_frag[m][n] : 0.0f;
-                }
-            }
-            
-            __syncthreads();
-
-            
-            // SMEM写回全局内存过程
-
-            // 全局内存读取SMEM时线程重拍，线程块尺寸：
-            constexpr int GLDC_C_BLOCK_X = BN / 4; // = 32
-            constexpr int GLDC_C_BLOCK_Y = (2 * WARP_Y * WARP_X) / GLDC_C_BLOCK_X; // = 2
-
-            // 线程索引重拍，tile尺寸变为2 * 32
-            int GLDC_C_thread_y = lane_row / (WARP_Y /GLDC_C_BLOCK_Y); // 0 ~ 1
-            int GLDC_C_thread_x = warp_col * WARP_X + lane_col
-                + (GLDC_C_thread_y % 2) * (2 * WARP_X); // 0 ~ 31
-
-            for (int i = 0; i < Cs_Y; i += GLDC_C_BLOCK_Y) {
-
-                int r = i * GLDC_C_BLOCK_Y + GLDC_C_thread_y;
-                int c = GLDC_C_thread_x * 4;
-
-                float4 temp = FLOAT4(Cs[GLDC_C_thread_y][GLDC_C_thread_x * 4]);
-                FLOAT4(C[r * N + c]) = temp;
-            }
-
-        }
-
-        __syncthreads();
-        
-    }
-
-
-
     //写回全局内存 - 方案二
     // 写回用 warp/lane 坐标，与 compute 一致
     // 一个线程负责一个数据间相邻的8*8部分
-    // 8*16
     int base_row = by * BM + warp_row * WARP_Y * TM + lane_row * TM;
     int base_col = bx * BN + warp_col * WARP_X * TN + lane_col * TN;
     for (int i = 0; i < TM; i++) {
+
         int r = base_row + i;
-        for (int j = 0; j < TN; j++) {
-            int c = base_col + j;
-            if (r < M && c < N) C[r * N + c] = c_frag[i][j];
+        if (r >= M) {
+            //M不为8的倍数时，负责余下的不足8行数据的线程同样循环8次，但没有数据的几次循环会执行continue语句跳过
+            continue;
         }
+
+        if (base_col + TN <= N) {
+            
+            //2条STG.128指令
+            
+            float4 temp = make_float4(c_frag[i][0], c_frag[i][1], c_frag[i][2], c_frag[i][3]);
+            FLOAT4(C[r * N + base_col]) = temp;
+
+            temp = make_float4(c_frag[i][4], c_frag[i][5], c_frag[i][6], c_frag[i][7]);
+            FLOAT4(C[r * N + base_col + 4]) = temp;
+
+        }
+
+        else {
+
+            // N不为8的倍数时，余下的不足8个的float数据逐个传输
+            for (int j = 0; j < N - base_col; ++j) {
+                C[r * N + base_col + j] = c_frag[i][j]
+            }
+
+        }
+
     }
 
 
