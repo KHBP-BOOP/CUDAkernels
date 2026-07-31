@@ -142,30 +142,6 @@ ncu_profile/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ncu_profile.dir/build.make CMakeFiles/ncu_profile.dir/build
 .PHONY : ncu_profile/fast
 
-src/DEVICE.o: src/DEVICE.cu.o
-.PHONY : src/DEVICE.o
-
-# target to build an object file
-src/DEVICE.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/DEVICE.cu.o
-.PHONY : src/DEVICE.cu.o
-
-src/DEVICE.i: src/DEVICE.cu.i
-.PHONY : src/DEVICE.i
-
-# target to preprocess a source file
-src/DEVICE.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/DEVICE.cu.i
-.PHONY : src/DEVICE.cu.i
-
-src/DEVICE.s: src/DEVICE.cu.s
-.PHONY : src/DEVICE.s
-
-# target to generate assembly for a file
-src/DEVICE.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/DEVICE.cu.s
-.PHONY : src/DEVICE.cu.s
-
 src/Main.o: src/Main.cpp.o
 .PHONY : src/Main.o
 
@@ -214,77 +190,29 @@ src/SGEMM.cu.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/SGEMM.cu.s
 .PHONY : src/SGEMM.cu.s
 
-src/treeReduction.o: src/treeReduction.cu.o
-.PHONY : src/treeReduction.o
+src/testSGEMM.o: src/testSGEMM.cu.o
+.PHONY : src/testSGEMM.o
 
 # target to build an object file
-src/treeReduction.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/treeReduction.cu.o
-.PHONY : src/treeReduction.cu.o
+src/testSGEMM.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/testSGEMM.cu.o
+.PHONY : src/testSGEMM.cu.o
 
-src/treeReduction.i: src/treeReduction.cu.i
-.PHONY : src/treeReduction.i
-
-# target to preprocess a source file
-src/treeReduction.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/treeReduction.cu.i
-.PHONY : src/treeReduction.cu.i
-
-src/treeReduction.s: src/treeReduction.cu.s
-.PHONY : src/treeReduction.s
-
-# target to generate assembly for a file
-src/treeReduction.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/treeReduction.cu.s
-.PHONY : src/treeReduction.cu.s
-
-src/vecAdd.o: src/vecAdd.cu.o
-.PHONY : src/vecAdd.o
-
-# target to build an object file
-src/vecAdd.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.o
-.PHONY : src/vecAdd.cu.o
-
-src/vecAdd.i: src/vecAdd.cu.i
-.PHONY : src/vecAdd.i
+src/testSGEMM.i: src/testSGEMM.cu.i
+.PHONY : src/testSGEMM.i
 
 # target to preprocess a source file
-src/vecAdd.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.i
-.PHONY : src/vecAdd.cu.i
+src/testSGEMM.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/testSGEMM.cu.i
+.PHONY : src/testSGEMM.cu.i
 
-src/vecAdd.s: src/vecAdd.cu.s
-.PHONY : src/vecAdd.s
-
-# target to generate assembly for a file
-src/vecAdd.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vecAdd.cu.s
-.PHONY : src/vecAdd.cu.s
-
-src/vectorDotProduct.o: src/vectorDotProduct.cu.o
-.PHONY : src/vectorDotProduct.o
-
-# target to build an object file
-src/vectorDotProduct.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.o
-.PHONY : src/vectorDotProduct.cu.o
-
-src/vectorDotProduct.i: src/vectorDotProduct.cu.i
-.PHONY : src/vectorDotProduct.i
-
-# target to preprocess a source file
-src/vectorDotProduct.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.i
-.PHONY : src/vectorDotProduct.cu.i
-
-src/vectorDotProduct.s: src/vectorDotProduct.cu.s
-.PHONY : src/vectorDotProduct.s
+src/testSGEMM.s: src/testSGEMM.cu.s
+.PHONY : src/testSGEMM.s
 
 # target to generate assembly for a file
-src/vectorDotProduct.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/vectorDotProduct.cu.s
-.PHONY : src/vectorDotProduct.cu.s
+src/testSGEMM.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/EXEFILE.dir/build.make CMakeFiles/EXEFILE.dir/src/testSGEMM.cu.s
+.PHONY : src/testSGEMM.cu.s
 
 # Help Target
 help:
@@ -296,24 +224,15 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... ncu_profile"
 	@echo "... EXEFILE"
-	@echo "... src/DEVICE.o"
-	@echo "... src/DEVICE.i"
-	@echo "... src/DEVICE.s"
 	@echo "... src/Main.o"
 	@echo "... src/Main.i"
 	@echo "... src/Main.s"
 	@echo "... src/SGEMM.o"
 	@echo "... src/SGEMM.i"
 	@echo "... src/SGEMM.s"
-	@echo "... src/treeReduction.o"
-	@echo "... src/treeReduction.i"
-	@echo "... src/treeReduction.s"
-	@echo "... src/vecAdd.o"
-	@echo "... src/vecAdd.i"
-	@echo "... src/vecAdd.s"
-	@echo "... src/vectorDotProduct.o"
-	@echo "... src/vectorDotProduct.i"
-	@echo "... src/vectorDotProduct.s"
+	@echo "... src/testSGEMM.o"
+	@echo "... src/testSGEMM.i"
+	@echo "... src/testSGEMM.s"
 .PHONY : help
 
 

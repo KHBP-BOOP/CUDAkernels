@@ -9,6 +9,7 @@ https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-arc
 https://docs.nvidia.com/cuda/cuda-c-programming-guide/contents.html  
 
 v?及之后版本的代码均为原创。
+严格根据NVIDIA GeForce RTX 4060 Laptop GPU进行适配开发
 
 C = A @ B
 
@@ -17,6 +18,13 @@ $A \in \mathbb{R}^{M \times K}$
 $B \in \mathbb{R}^{K \times N}$
 
 $C \in \mathbb{R}^{M \times N}$
+
+
+NVIDIA GeForce RTX 4060 Laptop GPU
+
+每流式多处理器最大可驻留的Warp数 48  
+最大可驻留线程数 1536
+
 
 ### 性能指标
 
@@ -169,7 +177,6 @@ SGEMM 算数强度I =
 2 * BM * BN * BK / 4 * (BM * BK + BK * BN)
 
 BM = BN = 64  ->  I == 16 FLOPS/Byte
-BM = BN = 128  ->  I == 32 FLOPS/Byte
 
 
 
@@ -514,7 +521,19 @@ tileAB载入SMEM时，向量化数据的传输分两个阶段，STS.128过程一
 向量化数据实现合并访问；  
 
 向量化时，用 make_float4() 而不是 *reinterpret_cast<float4*>(&)，因为取地址会强制将c_frag从寄存器溢出到local memory，  
-寄存器无地址，不应该对寄存器中的数据取地址，否则编译器会将数据溢出至局部内存，在类似的寄存器直接写入HBM的情景中会产生额外开销；  
+寄存器无内存地址空间中的地址，只有寄存器编号，故不应该对寄存器中的数据取地址，否则编译器会强行将数据溢出至局部内存，在类似的寄存器直接写入HBM的情景中会产生额外开销；  
+
+
+
+
+todo：
+loadtileA仅一次运输，无需for循环？
+loadtileAB的bc造成的瓶颈？
+
+
+
+？？？
+写回时不经过SMEM？
 
 
 

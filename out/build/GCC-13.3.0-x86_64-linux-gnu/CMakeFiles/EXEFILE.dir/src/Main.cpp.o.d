@@ -27,6 +27,7 @@ CMakeFiles/EXEFILE.dir/src/Main.cpp.o: \
  /usr/include/cuda_device_runtime_api.h \
  /home/khbp/codes/CUDAkernels/include/vectorDotProduct.cuh \
  /home/khbp/codes/CUDAkernels/include/treeReduction.cuh \
+ /home/khbp/codes/CUDAkernels/include/SGEMM.cuh \
  /usr/include/c++/13/iostream /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

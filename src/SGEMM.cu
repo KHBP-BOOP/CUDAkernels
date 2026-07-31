@@ -2,6 +2,7 @@
 #include <cuda_runtime_api.h>
 
 #define FLOAT4(f) *reinterpret_cast<float4*>(&f)
+#define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
 
 
 // 协作加载 tileA: 全局内存 → Shared Memory
@@ -26,7 +27,7 @@ __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
 
         //计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
         //为确保LDG.128的16B对齐，K必须是4的倍数（最优情况下是 BK=8 的倍数）
-        float4 temp = (r < M && c + 3 < K) ? FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
+        float4 temp = (r < M && c + 3 < K) ? CONST_FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
 
         // 同一block内，具体一次K维度的循环中，所有thread的r0一定、k一定
         FLOAT4(As[i][a_thread_x * 4]) = temp; // STS.128
@@ -48,14 +49,14 @@ __device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
     // float4向量化前：8 * 32个线程，每个线程做4次LDG.32，8 * 128个数据循环4次处理完成
     // float4向量化后：8 * 32个线程，每个线程做1次LDG.128，8 * 128个数据1次即可处理完成
     #pragma unroll
-    for (int j = b_thread_x; j < BN; j += B_BLOCK_X) {
+    for (int j = b_thread_x; j < BN / 4; j += B_BLOCK_X) {
 
         //每个thread在block中的索引
         int r = k + b_thread_y, c = c0 + j * 4;
 
         //计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
         //为确保LDG.128的16B对齐，K必须是4的倍数（最优情况下是 BK=8 的倍数）
-        float4 temp = (r < K && c + 3 < N) ? FLOAT4(B[r * N + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
+        float4 temp = (r < K && c + 3 < N) ? CONST_FLOAT4(B[r * N + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
 
         // 同一block内，具体一次K维度的循环中，所有thread的c0一定、k一定
         FLOAT4(Bs[b_thread_y][j * 4]) = temp; // STS.128
@@ -191,15 +192,22 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 
             // N不为8的倍数时，余下的不足8个的float数据逐个传输
             for (int j = 0; j < N - base_col; ++j) {
-                C[r * N + base_col + j] = c_frag[i][j]
+                C[r * N + base_col + j] = c_frag[i][j];
             }
 
         }
 
     }
-
-
-
-
-
 }
+
+// 主机端启动封装：核函数模板在本翻译单元内完成实例化。
+// 直接跨翻译单元链接 __global__ 模板实例化存在可见性问题
+// （rdc=false 模式下模板实例化的 host stub 默认具有内部链接属性），
+// 因此测试代码 (src/testSGEMM.cu) 通过本函数间接启动核函数
+void launch_sgemm_thread_tiling(const float *A, const float *B, float *C,
+                                int M, int N, int K, dim3 grid, dim3 block)
+{
+    sgemm_thread_tiling<128, 128, 8, 256, 8, 4, 8, 8>
+        <<<grid, block>>>(A, B, C, M, N, K);
+}
+

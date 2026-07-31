@@ -27,11 +27,12 @@ string(APPEND CMAKE_CUDA_FLAGS " -lineinfo -Xptxas=-v")
 #生成可执行文件
 add_executable(EXEFILE
     src/Main.cpp
-    src/vecAdd.cu
-    src/vectorDotProduct.cu
-    src/DEVICE.cu
-    src/treeReduction.cu
+#    src/vecAdd.cu
+#    src/vectorDotProduct.cu
+#    src/DEVICE.cu
+#    src/treeReduction.cu
     src/SGEMM.cu
+    src/testSGEMM.cu
 )
 
 set_source_files_properties(src/blockReduceSum.cu PROPERTIES COMPILE_FLAGS "-g -lineinfo")
