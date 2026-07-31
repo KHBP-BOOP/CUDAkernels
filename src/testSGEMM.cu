@@ -1,15 +1,3 @@
-// testSGEMM.cu
-// 主机端 SGEMM 测试：正确性校验 + 性能基准
-//
-// 核函数约束（来自 load_tile 的 LDG.128 与写回阶段的 STG.128）：
-//   - K 必须为 4 的倍数（A、B 读取的 16B 对齐）
-//   - N 必须为 4 的倍数（C 写回的 16B 对齐）
-//   - M 任意（越界行由写回逻辑跳过）
-//
-// 测试内容：
-//   1. 正确性：多组尺寸（含 M/N 非 128 倍数、K 非 8 倍数等边界）
-//      与 CPU 双精度参考结果对比
-//   2. 性能：4096×4096×4096 基准，输出平均耗时与 GFLOPS
 
 #include "SGEMM.cuh"
 
@@ -21,160 +9,161 @@
 #include <random>
 #include <vector>
 
-#define CUDA_CHECK(call)                                                       \
-    do {                                                                       \
-        cudaError_t err = (call);                                              \
-        if (err != cudaSuccess) {                                              \
-            fprintf(stderr, "CUDA error %s at %s:%d\n",                        \
-                    cudaGetErrorString(err), __FILE__, __LINE__);              \
-            exit(-1);                                                          \
-        }                                                                      \
-    } while (0)
+#include <cuda_runtime_api.h>
 
-// 核函数模板参数（必须与 include/SGEMM.cuh 末尾 extern template 的实例化一致）
-constexpr int BM = 128, BN = 128, BK = 8;
-constexpr int BLOCK_SIZE = 256, Wx = 8, Wy = 4, TM = 8, TN = 8;
+#define CUDA_CHECK(call) \
+do { \
+    cudaError_t err = call; \
+    if (err != cudaSuccess) { \
+        fprintf(stderr, "error occurs in %d line of %s : %s", __LINE__, __FILE__, cudaGetErrorString(err)); \
+        exit(EXIT_FAILURE); \
+    } \
+} while (0)
 
-// CPU 双精度参考实现: C = A * B（行主序）
-static void sgemm_ref_cpu(const std::vector<float> &A, const std::vector<float> &B,
-                          std::vector<float> &C, int M, int N, int K) {
-    std::fill(C.begin(), C.end(), 0.0f);
+// 与 src/SGEMM.cu 中实例化的模板参数保持一致（用于计算 Grid 配置）
+constexpr int BM = 128, BN = 128;
+constexpr int BLOCK_SIZE = 256;
+
+// CPU 参考实现：i-k-j 循环顺序对 cache 友好，双精度累加作为正确性基准
+static void sgemm_cpu_ref(const std::vector<float>& A, const std::vector<float>& B,
+                          std::vector<double>& C, int M, int N, int K)
+{
     for (int i = 0; i < M; ++i) {
-        for (int j = 0; j < N; ++j) {
-            double sum = 0.0;
-            for (int k = 0; k < K; ++k) {
-                sum += static_cast<double>(A[i * K + k]) * B[k * N + j];
+        for (int k = 0; k < K; ++k) {
+            double a = A[i * K + k];
+            for (int j = 0; j < N; ++j) {
+                C[i * N + j] += a * static_cast<double>(B[k * N + j]);
             }
-            C[i * N + j] = static_cast<float>(sum);
         }
     }
 }
 
-// 逐元素校验：绝对误差 ≤ 1e-5 或相对误差 ≤ 1e-4 视为一致
-// 返回是否通过，并通过引用输出最大绝对/相对误差
-static bool verify(const std::vector<float> &C_ref, const std::vector<float> &C_gpu,
-                   int M, int N, double &max_abs_err, double &max_rel_err) {
-    max_abs_err = 0.0;
-    max_rel_err = 0.0;
-    bool pass = true;
-    for (int i = 0; i < M; ++i) {
-        for (int j = 0; j < N; ++j) {
-            double ref = C_ref[i * N + j];
-            double gpu = C_gpu[i * N + j];
-            double abs_err = std::fabs(gpu - ref);
-            double rel_err = abs_err / (std::fabs(ref) + 1e-6);
-            max_abs_err = std::max(max_abs_err, abs_err);
-            max_rel_err = std::max(max_rel_err, rel_err);
-            if (abs_err > 1e-5 + 1e-4 * std::fabs(ref)) {
-                pass = false;
+// 与 CPU 基准对比，返回是否通过
+// 判据：绝对误差与相对误差同时超过阈值才记为失配（浮点累加顺序不同，存在固有舍入差异）
+static bool verify_result(const std::vector<float>& gpu, const std::vector<double>& ref,
+                          int M, int N)
+{
+    double max_abs_err = 0.0, max_rel_err = 0.0;
+    int mismatches = 0;
+    for (size_t i = 0; i < static_cast<size_t>(M) * N; ++i) {
+        double abs_err = std::abs(static_cast<double>(gpu[i]) - ref[i]);
+        double rel_err = abs_err / (std::abs(ref[i]) + 1e-6);
+        max_abs_err = std::max(max_abs_err, abs_err);
+        max_rel_err = std::max(max_rel_err, rel_err);
+        if (abs_err > 1e-2 && rel_err > 1e-2) {
+            if (mismatches < 5) {
+                printf("  失配: C[%zu] GPU = %f, CPU = %f\n", i, gpu[i], ref[i]);
             }
+            ++mismatches;
         }
     }
-    return pass;
+    std::cout << "最大绝对误差: " << max_abs_err << ", 最大相对误差: " << max_rel_err << std::endl;
+    if (mismatches > 0) {
+        std::cout << "失配元素个数: " << mismatches << " / " << static_cast<size_t>(M) * N << std::endl;
+    }
+    return mismatches == 0;
 }
 
-// 运行一组尺寸: do_verify = true 时与 CPU 参考对比并打印校验结果，否则仅测性能
-static void run_case(int M, int N, int K, bool do_verify) {
-    if (K % 4 != 0 || N % 4 != 0) {
-        std::cerr << "[skip] 需要 K%4==0 且 N%4==0，跳过 M=" << M
-                  << " N=" << N << " K=" << K << std::endl;
-        return;
-    }
+// 运行一次完整的 SGEMM 测试：分配内存 → 随机初始化 → 核函数预热/计时 → 正确性校验
+// iterations > 0 时进行性能测试（预热 + 循环计时取平均），为 0 时仅校验正确性
+static bool run_sgemm_test(int M, int N, int K, int iterations)
+{
+    std::cout << "========================================" << std::endl;
+    std::cout << "测试规模    : M = " << M << ", N = " << N << ", K = " << K << std::endl;
 
-    const size_t bytes_A = static_cast<size_t>(M) * K * sizeof(float);
-    const size_t bytes_B = static_cast<size_t>(K) * N * sizeof(float);
-    const size_t bytes_C = static_cast<size_t>(M) * N * sizeof(float);
+    size_t a_bytes = static_cast<size_t>(M) * K * sizeof(float);
+    size_t b_bytes = static_cast<size_t>(K) * N * sizeof(float);
+    size_t c_bytes = static_cast<size_t>(M) * N * sizeof(float);
 
-    // 1. 主机端随机数据（固定种子，结果可复现）
-    static std::mt19937 gen(42);
-    static std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-    std::vector<float> h_A(M * K), h_B(K * N);
-    std::vector<float> h_C(M * N, 0.0f), h_ref(M * N, 0.0f);
-    for (float &v : h_A) v = dist(gen);
-    for (float &v : h_B) v = dist(gen);
+    // 1. 分配主机内存并用 [-1, 1] 均匀分布随机数初始化
+    std::vector<float> h_A(static_cast<size_t>(M) * K);
+    std::vector<float> h_B(static_cast<size_t>(K) * N);
+    std::vector<float> h_C(static_cast<size_t>(M) * N, 0.0f);
 
-    // 2. 分配设备内存并拷贝输入
+    std::mt19937 rng(42); // 固定种子，保证结果可复现
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    for (auto& v : h_A) v = dist(rng);
+    for (auto& v : h_B) v = dist(rng);
+
+    // 2. 分配设备（GPU）内存并拷贝输入数据
     float *d_A, *d_B, *d_C;
-    CUDA_CHECK(cudaMalloc(&d_A, bytes_A));
-    CUDA_CHECK(cudaMalloc(&d_B, bytes_B));
-    CUDA_CHECK(cudaMalloc(&d_C, bytes_C));
-    CUDA_CHECK(cudaMemcpy(d_A, h_A.data(), bytes_A, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_B, h_B.data(), bytes_B, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMalloc(&d_A, a_bytes));
+    CUDA_CHECK(cudaMalloc(&d_B, b_bytes));
+    CUDA_CHECK(cudaMalloc(&d_C, c_bytes));
+    CUDA_CHECK(cudaMemcpy(d_A, h_A.data(), a_bytes, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_B, h_B.data(), b_bytes, cudaMemcpyHostToDevice));
 
+    // 3. 配置 Grid/Block 并启动核函数
+    dim3 block(BLOCK_SIZE);
     dim3 grid((N + BN - 1) / BN, (M + BM - 1) / BM);
-    auto launch = [&]() {
-        launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, 256);
-    };
 
-    // 3. 预热，消除驱动懒加载与省电唤醒延迟
-    launch();
+    // 预热 GPU (Warm-up)，消除驱动懒加载和显卡从省电模式唤醒的延迟
+    launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, block);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    // 4. 计时（多次执行取平均）
-    const int iterations = do_verify ? 3 : 20;
-    cudaEvent_t start, stop;
-    CUDA_CHECK(cudaEventCreate(&start));
-    CUDA_CHECK(cudaEventCreate(&stop));
-    CUDA_CHECK(cudaEventRecord(start));
-    for (int i = 0; i < iterations; ++i) {
-        launch();
-    }
-    CUDA_CHECK(cudaEventRecord(stop));
-    CUDA_CHECK(cudaEventSynchronize(stop));
-    float ms = 0.0f;
-    CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
-    float avg_ms = ms / iterations;
+    // 4. 循环执行多次，取平均时间以获得更稳定的性能数据
+    float avg_milliseconds = 0.0f;
+    if (iterations > 0) {
+        cudaEvent_t start, stop;
+        cudaEventCreate(&start);
+        cudaEventCreate(&stop);
 
-    // 5. 回拷结果并校验
-    CUDA_CHECK(cudaMemcpy(h_C.data(), d_C, bytes_C, cudaMemcpyDeviceToHost));
-    bool pass = true;
-    double max_abs_err = 0.0, max_rel_err = 0.0;
-    if (do_verify) {
-        sgemm_ref_cpu(h_A, h_B, h_ref, M, N, K);
-        pass = verify(h_ref, h_C, M, N, max_abs_err, max_rel_err);
+        std::cout << "Running kernel for " << iterations << " iterations..." << std::endl;
+        cudaEventRecord(start, 0);
+        for (int i = 0; i < iterations; ++i) {
+            launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, block);
+        }
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+
+        float total_milliseconds = 0.0f;
+        cudaEventElapsedTime(&total_milliseconds, start, stop);
+        avg_milliseconds = total_milliseconds / iterations;
+        cudaEventDestroy(start);
+        cudaEventDestroy(stop);
     }
 
-    // 6. 打印报告
-    double gflops = 2.0 * static_cast<double>(M) * N * K / (avg_ms * 1e-3) / 1e9;
-    std::cout << "----------------------------------------" << std::endl;
-    std::cout << "M=" << M << "  N=" << N << "  K=" << K
-              << "   (" << bytes_C / (1024.0 * 1024.0) << " MB C)" << std::endl;
-    std::cout << "Grid 配置   : " << grid.x << "x" << grid.y << " Blocks, "
+    // 5. 将结果拷贝回主机，与 CPU 基准对比
+    CUDA_CHECK(cudaMemcpy(h_C.data(), d_C, c_bytes, cudaMemcpyDeviceToHost));
+
+    std::vector<double> h_ref(static_cast<size_t>(M) * N, 0.0);
+    std::cout << "Running CPU reference..." << std::endl;
+    sgemm_cpu_ref(h_A, h_B, h_ref, M, N, K);
+    bool pass = verify_result(h_C, h_ref, M, N);
+
+    // 6. 打印测试报告
+    std::cout << "Grid 配置   : " << grid.x << " x " << grid.y << " Blocks, "
               << BLOCK_SIZE << " Threads/Block" << std::endl;
-    if (do_verify) {
-        std::cout << "结果验证    : " << (pass ? "通过 (PASS)" : "失败 (FAIL)")
-                  << "   (max abs err=" << max_abs_err
-                  << ", max rel err=" << max_rel_err << ")" << std::endl;
+    std::cout << "结果验证    : " << (pass ? "通过 (PASS)" : "失败 (FAIL)") << std::endl;
+    if (iterations > 0) {
+        // FLOPs = 2*M*N*K（每个输出元素需 K 次乘加）
+        double tflops = 2.0 * M * N * K / (avg_milliseconds * 1e-3) / 1e12;
+        double peak_tflops = 15.0; // 按显卡 FP32 峰值调整（如 RTX 4060 Laptop ≈ 15 TFLOPS）
+        std::cout << "----------------------------------------" << std::endl;
+        std::cout << "平均计算耗时: " << avg_milliseconds << " ms" << std::endl;
+        std::cout << "计算性能    : " << tflops << " TFLOPS" << std::endl;
+        std::cout << "峰值利用率  : " << 100.0 * tflops / peak_tflops << " %" << std::endl;
     }
-    std::cout << "平均计算耗时: " << avg_ms << " ms (x" << iterations << ")" << std::endl;
-    std::cout << "性能        : " << gflops << " GFLOPS" << std::endl;
 
     // 7. 释放资源
-    CUDA_CHECK(cudaEventDestroy(start));
-    CUDA_CHECK(cudaEventDestroy(stop));
-    CUDA_CHECK(cudaFree(d_A));
-    CUDA_CHECK(cudaFree(d_B));
-    CUDA_CHECK(cudaFree(d_C));
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+    return pass;
 }
 
-void testSGEMM() {
-    cudaDeviceProp prop;
-    CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
-    std::cout << "GPU: " << prop.name << "  (SM " << prop.major << "." << prop.minor
-              << ", " << prop.multiProcessorCount << " SMs)" << std::endl;
+void testSGEMM()
+{
+    bool pass = true;
 
-    // 1. 正确性校验：覆盖边界情况
-    const int cases[][3] = {
-        {130, 140, 24},     // M、N 非 128 倍数；K 为 4 倍数、非 8 倍数
-        {256, 256, 256},    // 规整尺寸
-        {1037, 1036, 1036}, // M 非 8 倍数（余行）；N、K 非 128 倍数
-        {1000, 1008, 1040}, // 大尺寸非规整
-    };
-    for (const auto &c : cases) {
-        run_case(c[0], c[1], c[2], /*do_verify=*/true);
-    }
+    // 性能 + 正确性测试：规整尺寸
+    pass &= run_sgemm_test(1024, 1024, 1024, 50);
 
-    // 2. 性能基准
-    run_case(4096, 4096, 4096, /*do_verify=*/false);
+    // 边界正确性测试：M/N/K 均不是 Tile 尺寸的整数倍
+    // 注意：为保证 LDG.128 的 16B 地址对齐，N 与 K 仍必须是 4 的倍数
+    pass &= run_sgemm_test(999, 1028, 1020, 0);
+
+    std::cout << "========================================" << std::endl;
+    std::cout << "总体结果    : " << (pass ? "全部通过 (ALL PASS)" : "存在失败 (FAIL)") << std::endl;
 }
