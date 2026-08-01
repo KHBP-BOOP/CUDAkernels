@@ -138,8 +138,8 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
             #pragma unroll
             for (int j = 0; j < TN; j += 2) {
                 
-                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X);
-                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X);
+                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X / 2 + lane_col);
+                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X / 2 + lane_col);
 
             }
 
@@ -210,4 +210,3 @@ void launch_sgemm_thread_tiling(const float *A, const float *B, float *C,
     sgemm_thread_tiling<128, 128, 8, 256, 8, 4, 8, 8>
         <<<grid, block>>>(A, B, C, M, N, K);
 }
-
