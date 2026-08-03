@@ -507,11 +507,223 @@ warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM
 ## version 4
 
 向量化 +  
-优化写回过程 + bank c +  
-benchmark
+优化写回过程
 
 将寄存器中8*8个数据float4向量化，每个线程每次循环执行2次float4类型数据的读写，共处理32B数据,同一warp的32个thread同时处理2 * 16 * 32B数据;
 8个warp循环8次，覆盖128 * 128个float数据
+
+
+
+#include <cuda_runtime_api.h>
+
+#define FLOAT4(f) *reinterpret_cast<float4*>(&f)
+#define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
+
+
+// 协作加载 tileA: 全局内存 → Shared Memory
+// r0 = blockIdx.y * BM,  k = 当前 K 维度起点
+template <int BM = 128, int BK = 8, int BLOCK_SIZE>
+__device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
+                            int M, int K, int r0, int k, int tid)
+{
+    // 线程重排: 128 * 2 布局, 实现合并访问以及float4向量化 (coalesced access)
+    constexpr int A_BLOCK_X = BK / 4;                     // = 2
+    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X; // = 128
+    int a_thread_x = tid % A_BLOCK_X;                 // 0 ~ 1
+    int a_thread_y = tid / A_BLOCK_X;                 // 0 ~ 127
+
+    // float4向量化前：32 * 8个线程，每个线程做4次LDG.32，128 * 8个数据循环4次处理完成
+    // float4向量化后：128 * 2个线程，每个线程做1次LDG.128，128 * 8个数据1次即可处理完成
+    #pragma unroll
+    for (int i = a_thread_y; i < BM; i += A_BLOCK_Y) {
+
+        // 每个thread在block中的索引
+        int r = r0 + i, c = k + a_thread_x * 4;
+
+        // 计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
+        // 为确保LDG.128的16B对齐，K必须是4的倍数（最优情况下是 BK=8 的倍数）
+        // k为8的倍数，故c一定为4的倍数；c、K均为4的倍数，故不存在数据丢失情况
+        float4 temp = (r < M && c + 3 < K) ? CONST_FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
+
+        // 同一block内，具体一次K维度的循环中，所有thread的r0一定、k一定
+        FLOAT4(As[i][a_thread_x * 4]) = temp; // STS.128
+
+        //warp32个线程中，每个线程处理一个float4类型，共512B；
+        //硬件将其划分为4个128B内存事务，每个事务均占满SMEM的32个bank，流水线串行执行事务时无bank conflict
+    }
+}
+
+// 协作加载 tileB: 全局内存 → Shared Memory
+// c0 = blockIdx.x * BN,  k = 当前 K 维度起点
+template <int BN, int BK, int BLOCK_SIZE>
+__device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
+                            int K, int N, int c0, int k, int tid)
+{
+    // 线程重排: 8×32 布局, 实现合并访问
+    constexpr int B_BLOCK_X = 128 / 4;
+    constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X; // = 8
+    int b_thread_x = tid % B_BLOCK_X;                 // 0 ~ 31
+    int b_thread_y = tid / B_BLOCK_X;                 // 0 ~ 7
+
+    // float4向量化前：8 * 32个线程，每个线程做4次LDG.32，8 * 128个数据循环4次处理完成
+    // float4向量化后：8 * 32个线程，每个线程做1次LDG.128，8 * 128个数据1次即可处理完成
+    #pragma unroll
+    for (int j = b_thread_y; j < BK; j += B_BLOCK_Y) {
+
+        // 每个thread在block中的索引
+        int r = k + j, c = c0 + b_thread_x * 4;
+
+        // 计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
+        // 为确保LDG.128的16B对齐，N必须是4的倍数（最优情况下是 BN=128 的倍数）
+        // c0 = bx * BN，故c一定为4的倍数，不存在数据丢失情况
+        float4 temp = (r < K && c + 3 < N) ? CONST_FLOAT4(B[r * N + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
+
+        // 同一block内，具体一次K维度的循环中，所有thread的c0一定、k一定
+        FLOAT4(Bs[j][b_thread_x * 4]) = temp; // STS.128
+    }
+}
+
+
+template <int BM = 128, int BN = 128, int BK = 8,
+    int BLOCK_SIZE, int Wx, int Wy,
+    int TM, int TN>
+__global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, int M, int N, int K)
+{
+    __shared__ float As[BM][BK];
+    __shared__ float Bs[BK][BN];
+
+    int tid = threadIdx.x;
+    int by = blockIdx.y, bx = blockIdx.x;
+
+    // 寄存器
+    float a_frag[TM];
+    float b_frag[TN];
+    float c_frag[TM][TN] = {0.0f};
+
+
+    int warp_id = tid >> 5; // tid / 32
+    int lane_id = tid & 31; // tid % 32
+
+    constexpr int WARP_Y = Wy; // 4
+    constexpr int WARP_X = Wx; // 8
+
+    //寄存器读取SMEM时线程重排，线程块尺寸
+    constexpr int RLDS_C_BLOCK_X = BN / TN;
+    constexpr int RLDS_C_BLOCK_Y = BM / TM;
+
+    // 每一列 LDS_C_BLOCK_Y / WARP_Y 个 warp tile
+    constexpr int warp_tile_per_col = RLDS_C_BLOCK_Y / WARP_Y;
+    // 每一行 LDS_C_BLOCK_X / WARP_X 个 warp tile
+    constexpr int warp_tile_per_row = RLDS_C_BLOCK_X / WARP_X;
+
+    // warp 在 Block 中的位置（4×2 排列）
+    int warp_row = warp_id / warp_tile_per_row; // / 2   M 方向：0~3
+    int warp_col = warp_id % warp_tile_per_row; // % 2   N 方向：0~1
+
+    // lane 在 warp 内的位置（4×8 排列，行主序）
+    int lane_row = lane_id / WARP_X; // M 方向：0~3
+    int lane_col = lane_id % WARP_X; // N 方向：0~7
+
+    //K-Loop
+    for (int bk = 0; bk < K; bk += BK)
+    {
+
+        // 协作加载 A、B 到 Shared Memory
+        load_tile_A<BM, BK, BLOCK_SIZE>(A, As, M, K, by * BM, bk, tid);
+        load_tile_B<BN, BK, BLOCK_SIZE>(B, Bs, K, N, bx * BN, bk, tid);
+
+        __syncthreads();
+
+        // 外积累加
+        for (int k = 0; k < BK; k++) {
+
+            // 从 Shared Memory 加载到寄存器
+
+            //1个线程读取1个数据至a_frag
+            a_frag[lane_col] = As[warp_row * WARP_Y * TM + lane_row * TM + lane_col][k];
+
+            // 广播 a_frag
+            // 每个线程遍历各自的a_frag，从同行对应线程的或自身的a_frag中获取数据，使得同行线程的a_frag均存有正确数据且一致
+            #pragma unroll
+            for (int i = 0; i < TM; i++) {
+
+                a_frag[i] = __shfl_sync(0xffffffff, a_frag[i], i, 8);
+            }
+
+            //1个线程读取2个数据至b_frag
+            b_frag[lane_row * 2] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2];
+            b_frag[lane_row * 2 + 1] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2 + 1];
+ 
+            
+            // 广播 b_frag
+            // 每个线程遍历各自的b_frag，从同列对应线程的或自身的b_frag中获取数据，使得同列线程的b_frag均存有正确数据且一致
+            #pragma unroll
+            for (int j = 0; j < TN; j += 2) {
+                
+                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X / 2 + lane_col);
+                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X / 2 + lane_col);
+
+            }
+
+            // 寄存器上做外积
+            for (int i = 0; i < TM; i++) {
+                for (int j = 0; j < TN; j++) {
+                    c_frag[i][j] += a_frag[i] * b_frag[j];
+                }
+            }
+        }
+
+        __syncthreads();
+    }
+
+
+    // 写回全局内存，使用 warp/lane 坐标，与 compute 一致
+    // 一个线程负责一个数据间相邻的8*8部分
+    int base_row = by * BM + warp_row * WARP_Y * TM + lane_row * TM;
+    int base_col = bx * BN + warp_col * WARP_X * TN + lane_col * TN;
+    for (int i = 0; i < TM; i++) {
+
+        int r = base_row + i;
+        if (r >= M) {
+            //M不为8的倍数时，负责余下的不足8行数据的线程同样循环8次，但没有数据的几次循环会执行continue语句跳过
+            continue;
+        }
+
+        if (base_col + TN <= N) {
+            
+            //2条STG.128指令
+            
+            float4 temp = make_float4(c_frag[i][0], c_frag[i][1], c_frag[i][2], c_frag[i][3]);
+            FLOAT4(C[r * N + base_col]) = temp;
+
+            temp = make_float4(c_frag[i][4], c_frag[i][5], c_frag[i][6], c_frag[i][7]);
+            FLOAT4(C[r * N + base_col + 4]) = temp;
+
+        }
+
+        else {
+
+            // N不为8的倍数时，余下的不足8个的float数据逐个传输
+            for (int j = 0; j < N - base_col; ++j) {
+                C[r * N + base_col + j] = c_frag[i][j];
+            }
+
+        }
+
+    }
+}
+
+// 主机端启动封装：核函数模板在本翻译单元内完成实例化。
+// 直接跨翻译单元链接 __global__ 模板实例化存在可见性问题
+// （rdc=false 模式下模板实例化的 host stub 默认具有内部链接属性），
+// 因此测试代码 (src/testSGEMM.cu) 通过本函数间接启动核函数
+void launch_sgemm_thread_tiling(const float *A, const float *B, float *C,
+                                int M, int N, int K, dim3 grid, dim3 block)
+{
+    sgemm_thread_tiling<128, 128, 8, 256, 8, 4, 8, 8>
+        <<<grid, block>>>(A, B, C, M, N, K);
+}
+
 
 
 details：
@@ -526,12 +738,6 @@ tileAB载入SMEM时，向量化数据的传输分两个阶段，STS.128过程一
 
 
 
-todo：
-loadtileA仅一次运输，无需for循环？
-loadtileAB的bc造成的瓶颈？
-
-
-
 ？？？
 写回时不经过SMEM？
 
@@ -539,6 +745,9 @@ loadtileAB的bc造成的瓶颈？
 
 
 
+
+
+规范了对frag数组广播过程解读的注释
 
 线程重排情况
 GLM   ------------》   SMEM   -------》   REG
@@ -550,7 +759,48 @@ tileA 128\*2 tileB 8*32     4\*8warp tile
 
 ## version5
 
+bank c +  
+benchmark
 
+同一warp的32个线程均参与b_frag的写入，由于相邻线程读取的数据相隔8个数值，会导致2way冲突，故现采用每个线程读取float4向量化数据，且相邻线程读取的数据连续。此时每个quarter-warp均读取连续的、正好填满一行bank的共128B数据。
+
+当前各线程寄存器中数值不在正确位置，现进行以下调整：
+0前 -> 0前
+1前 -> 0后
+2前 -> 1前
+3前 -> 1后
+4前 -> 2前
+5前 -> 2后
+6前 -> 3前
+7前 -> 3后
+...
+...
+12前 -> 6前
+13前 -> 6后
+14前 -> 7前
+15前 -> 7后
+
+先直接写入frag数组再原地调整 -》先将SMEM中数据写入临时float4类型的线程私有寄存器变量，再按照严格顺序进行8次洗牌广播
+
+
+A
+1. padding？ 行距变成 9 floats 会破坏 STS.128 的 16B 对齐。
+2. 转置
+
+B
+2way bc
+读取逻辑？ 
+
+next：
+A，转置代码正确性？B，共256B大小的内存事务，硬件划分为2个128B事务，每个事务均存在2way bc？
+
+
+
+
+
+
+todo：
+loadtileAB的bc造成的瓶颈？
 
 ？？？
 TM TN x y 在哪一维度列不等式？
