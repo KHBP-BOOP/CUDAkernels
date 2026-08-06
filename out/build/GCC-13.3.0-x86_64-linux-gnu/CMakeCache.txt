@@ -458,6 +458,22 @@ CUDA_pcsamplingutil_LIBRARY:FILEPATH=/usr/local/cuda-13.2/targets/x86_64-linux/l
 //Path to a program.
 NCU_EXECUTABLE:FILEPATH=/usr/local/cuda-13.2/bin/ncu
 
+//Extra arguments passed to ncu
+NCU_EXTRA_ARGS:STRING=
+
+//Optional ncu --kernel-name regex; empty profiles all kernels
+NCU_KERNEL_FILTER:STRING=
+
+//Directory where ncu reports are saved
+NCU_OUTPUT_DIR:PATH=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu/ncu_reports
+
+//Base name of the ncu report
+NCU_OUTPUT_NAME:STRING=my_profile_result
+
+//Run ncu with sudo (needs passwordless sudo or an interactive
+// terminal)
+NCU_USE_SUDO:BOOL=OFF
+
 //Value Computed by CMake
 PracticeForCUDA_cmake_BINARY_DIR:STATIC=/home/khbp/codes/CUDAkernels/out/build/GCC-13.3.0-x86_64-linux-gnu
 

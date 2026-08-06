@@ -130,17 +130,17 @@ EXEFILE/fast:
 .PHONY : EXEFILE/fast
 
 #=============================================================================
-# Target rules for targets named ncu_profile
+# Target rules for targets named profile
 
 # Build rule for target.
-ncu_profile: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ncu_profile
-.PHONY : ncu_profile
+profile: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 profile
+.PHONY : profile
 
 # fast build rule for target.
-ncu_profile/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ncu_profile.dir/build.make CMakeFiles/ncu_profile.dir/build
-.PHONY : ncu_profile/fast
+profile/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/profile.dir/build.make CMakeFiles/profile.dir/build
+.PHONY : profile/fast
 
 src/Main.o: src/Main.cpp.o
 .PHONY : src/Main.o
@@ -222,7 +222,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... ncu_profile"
+	@echo "... profile"
 	@echo "... EXEFILE"
 	@echo "... src/Main.o"
 	@echo "... src/Main.i"

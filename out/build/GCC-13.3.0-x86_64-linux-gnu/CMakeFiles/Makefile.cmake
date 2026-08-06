@@ -152,5 +152,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/EXEFILE.dir/DependInfo.cmake"
-  "CMakeFiles/ncu_profile.dir/DependInfo.cmake"
+  "CMakeFiles/profile.dir/DependInfo.cmake"
   )

@@ -7,6 +7,9 @@
 https://docs.nvidia.com/cuda/cuda-programming-guide/contents.html  
 https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf  
 https://docs.nvidia.com/cuda/cuda-c-programming-guide/contents.html  
+https://forums.developer.nvidia.com/t/how-to-understand-the-bank-conflict-of-shared-mem/260900
+https://caomaolufei.github.io/AIInfraGuide/
+
 
 v?及之后版本的代码均为原创。
 严格根据NVIDIA GeForce RTX 4060 Laptop GPU进行适配开发
@@ -22,9 +25,12 @@ $C \in \mathbb{R}^{M \times N}$
 
 NVIDIA GeForce RTX 4060 Laptop GPU
 
+L2缓存大小 24 MB  
+流式多处理器个数 24  
 每流式多处理器最大可驻留的Warp数 48  
-最大可驻留线程数 1536
-
+每流式多处理器最大可驻留线程数 1536  
+每流式多处理器寄存器文件大小 64 KB  
+每流式多处理器L1数据缓存/共享内存大小 128 KB  
 
 ### 性能指标
 
@@ -514,11 +520,11 @@ warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM
 
 
 
+```cpp
 #include <cuda_runtime_api.h>
 
 #define FLOAT4(f) *reinterpret_cast<float4*>(&f)
 #define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
-
 
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
@@ -723,7 +729,7 @@ void launch_sgemm_thread_tiling(const float *A, const float *B, float *C,
     sgemm_thread_tiling<128, 128, 8, 256, 8, 4, 8, 8>
         <<<grid, block>>>(A, B, C, M, N, K);
 }
-
+```
 
 
 details：
@@ -734,15 +740,6 @@ tileAB载入SMEM时，向量化数据的传输分两个阶段，STS.128过程一
 
 向量化时，用 make_float4() 而不是 *reinterpret_cast<float4*>(&)，因为取地址会强制将c_frag从寄存器溢出到local memory，  
 寄存器无内存地址空间中的地址，只有寄存器编号，故不应该对寄存器中的数据取地址，否则编译器会强行将数据溢出至局部内存，在类似的寄存器直接写入HBM的情景中会产生额外开销；  
-
-
-
-
-？？？
-写回时不经过SMEM？
-
-
-
 
 
 
@@ -762,7 +759,7 @@ tileA 128\*2 tileB 8*32     4\*8warp tile
 bank c +  
 benchmark
 
-同一warp的32个线程均参与b_frag的写入，由于相邻线程读取的数据相隔8个数值，会导致2way冲突，故现采用每个线程读取float4向量化数据，且相邻线程读取的数据连续。此时每个quarter-warp均读取连续的、正好填满一行bank的共128B数据。
+同一warp的32个线程均参与b_frag的写入，由于相邻线程读取的数据相隔8个float，会导致2way冲突，故现采用每个线程读取float4向量化数据，且相邻线程读取的数据连续。此时每个quarter-warp均读取连续的、正好填满一行bank的共128B数据。
 
 当前各线程寄存器中数值不在正确位置，现进行以下调整：
 0前 -> 0前
@@ -783,25 +780,33 @@ benchmark
 先直接写入frag数组再原地调整 -》先将SMEM中数据写入临时float4类型的线程私有寄存器变量，再按照严格顺序进行8次洗牌广播
 
 
-A
+A 8way bc
 1. padding？ 行距变成 9 floats 会破坏 STS.128 的 16B 对齐。
 2. 转置
 
-B
-2way bc
-读取逻辑？ 
-
-next：
-A，转置代码正确性？B，共256B大小的内存事务，硬件划分为2个128B事务，每个事务均存在2way bc？
+B 2way bc
+连续线程读取连续数据，读取完毕后再调整至正确位置，最后广播
 
 
 
 
 
+总结：
+相邻线程应尽量访问相距较短或相邻的数据
 
-todo：
-loadtileAB的bc造成的瓶颈？
+对于彻底消除divergence的优化，在结合了后续bc的情况下，又该如何重新考虑？
+访问尽量连续的数据 比 让同一warp的每个线程都参与 更重要
+
+
 
 ？？？
 TM TN x y 在哪一维度列不等式？
+
+写回时不经过SMEM？
+
+
+
+数据地址的对齐是硬件自动完成的吗？
+
+
 

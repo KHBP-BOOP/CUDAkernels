@@ -7,8 +7,8 @@
 
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
-template <int BM = 128, int BK = 8, int BLOCK_SIZE>
-__device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
+template <int BM, int BK, int BLOCK_SIZE>
+__device__ void load_tile_A(const float *__restrict__ A, float As[BK][BM],
                             int M, int K, int r0, int k, int tid)
 {
     // 线程重排: 128 * 2 布局, 实现合并访问以及float4向量化 (coalesced access)
@@ -30,11 +30,13 @@ __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
         // k为8的倍数，故c一定为4的倍数；c、K均为4的倍数，故不存在数据丢失情况
         float4 temp = (r < M && c + 3 < K) ? CONST_FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
 
-        // 同一block内，具体一次K维度的循环中，所有thread的r0一定、k一定
-        FLOAT4(As[i][a_thread_x * 4]) = temp; // STS.128
+        // 转置存入As，将STS.128拆分为4次标量STS.32
+        As[a_thread_x * 4 + 0][i] = temp.x;
+        As[a_thread_x * 4 + 1][i] = temp.y;
+        As[a_thread_x * 4 + 2][i] = temp.z;
+        As[a_thread_x * 4 + 3][i] = temp.w;
 
-        // warp32个线程中，每个线程处理一个float4类型，共512B；
-        // 硬件将其划分为4个128B内存事务，每个事务均占满SMEM的32个bank，流水线串行执行事务时无bank conflict
+        //此时STS一步出现2way冲突，但As存储至afrag时，原先需循环BK次、每次均为8way的冲突消失
     }
 }
 
@@ -74,7 +76,7 @@ template <int BM = 128, int BN = 128, int BK = 8,
     int TM, int TN>
 __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, int M, int N, int K)
 {
-    __shared__ float As[BM][BK];
+    __shared__ float As[BK][BM];
     __shared__ float Bs[BK][BN];
 
     int tid = threadIdx.x;
@@ -124,8 +126,9 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 
             // 从 Shared Memory 加载到寄存器
 
-            //1个线程读取1个数据至a_frag
-            a_frag[lane_col] = As[warp_row * WARP_Y * TM + lane_row * TM + lane_col][k];
+            //1个线程读取1个float至a_frag
+            //同一warp的32个线程发起1个内存事务，且数据严格连续对齐、无bank conflict
+            a_frag[lane_col] = As[k][warp_row * WARP_Y * TM + lane_row * TM + lane_col];
 
             // 广播 a_frag
             // 每个线程遍历各自的a_frag，从同行对应线程的或自身的a_frag中获取数据，使得同行线程的a_frag均存有正确数据且一致
@@ -137,25 +140,23 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 
 
             // b_frag写入过程
-            // 每个线程读取float4向量化数据，且相邻线程读取连续存储的数据
+            // 16个lane各读一个float4：相邻lane连续，无bank conflict
+            float4 b_vec = make_float4(0.f, 0.f, 0.f, 0.f);
             if (lane_row < 2) {
+                
+                b_vec = CONST_FLOAT4(Bs[k][warp_col * WARP_X * TN + lane_id * 4]);
+            }   
 
-                FLOAT4(b_frag[0]) = CONST_FLOAT4(Bs[k][warp_col * WARP_X * TN + lane_id * 4]);
-            }
-
-            // 先执行第一个分支，lane_row不为1的线程被设为非活跃状态
-            if (lane_row == 0) {
-                b_frag[0] = __shfl_sync(0xffffffff, b_frag[0], lane_col * 2);
-                b_frag[4] = __shfl_sync(0xffffffff, b_frag[4], lane_col * 2 + 1);
-
-            }
-            // 接着执行第二个，lane_row为1的线程被设为非活跃状态
-            else {
-                for (int i = 0; i < TN; ++i) {
-                    b_frag[i] = __shfl_sync(0xffffffff, b_frag[i], lane_col);
-                }
-
-            }
+            // 全warp参与、无分歧：0~3来自lane 2*lane_col，4~7来自lane 2*lane_col+1
+            // __shfl_sync()只支持32位或64位的基础标量类型，必须将float4类型数据拆开
+            b_frag[0] = __shfl_sync(0xffffffff, b_vec.x, 2 * lane_col);
+            b_frag[1] = __shfl_sync(0xffffffff, b_vec.y, 2 * lane_col);
+            b_frag[2] = __shfl_sync(0xffffffff, b_vec.z, 2 * lane_col);
+            b_frag[3] = __shfl_sync(0xffffffff, b_vec.w, 2 * lane_col);
+            b_frag[4] = __shfl_sync(0xffffffff, b_vec.x, 2 * lane_col + 1);
+            b_frag[5] = __shfl_sync(0xffffffff, b_vec.y, 2 * lane_col + 1);
+            b_frag[6] = __shfl_sync(0xffffffff, b_vec.z, 2 * lane_col + 1);
+            b_frag[7] = __shfl_sync(0xffffffff, b_vec.w, 2 * lane_col + 1);
             
 
             // 寄存器上做外积
