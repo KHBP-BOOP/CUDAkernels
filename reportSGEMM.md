@@ -800,9 +800,12 @@ B 2way bc
 
 
 ？？？
-TM TN x y 在哪一维度列不等式？
-
 写回时不经过SMEM？
+
+
+TM TN x y 在哪一维度列不等式？
+block thread warp register tiling 原理、本质
+
 
 
 
