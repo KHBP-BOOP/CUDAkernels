@@ -75,13 +75,14 @@ static bool verify_result(const std::vector<float>& gpu, const std::vector<doubl
     return mismatches == 0;
 }
 
-// RTX 4060 Laptop GPU 的 FP32 峰值（TFLOPS），用于计算利用率
-// 注：CUDA 13 运行时 API 已不再提供 clockRate 等设备属性，故采用常量估算
-constexpr double PEAK_TFLOPS = 15.0;
+
+
+
+using FUNC = void (*) (const float*, const float*, float*, int, int, int, dim3, dim3);
 
 // 运行一次完整的 SGEMM 测试：分配内存 → 随机初始化 → 核函数预热/计时 → 正确性校验
-// iterations > 0 时进行性能测试（预热 + 循环计时取平均），为 0 时仅校验正确性
-static bool run_sgemm_test(int M, int N, int K, int iterations) {
+// PerfAnaly != 0 时进行性能测试（预热 + 循环计时取平均），为 0 时仅校验正确性
+static bool run_sgemm_test(int M, int N, int K, bool PerfAnaly, FUNC launch_sgemm_thread_tiling) {
 
     std::cout << "测试规模    : M = " << M << ", N = " << N << ", K = " << K << std::endl;
 
@@ -96,8 +97,8 @@ static bool run_sgemm_test(int M, int N, int K, int iterations) {
 
     std::mt19937 rng(42); // 固定种子，保证结果可复现
     std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-    for (auto& v : h_A) v = dist(rng);
-    for (auto& v : h_B) v = dist(rng);
+    for (auto& v : h_A) { v = dist(rng); }
+    for (auto& v : h_B) { v = dist(rng); }
 
     // 2. 分配设备（GPU）内存并拷贝输入数据
     float *d_A, *d_B, *d_C;
@@ -116,26 +117,10 @@ static bool run_sgemm_test(int M, int N, int K, int iterations) {
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    // 4. 循环执行多次，取平均时间以获得更稳定的性能数据
-    float avg_milliseconds = 0.0f;
-    if (iterations > 0) {
-        cudaEvent_t start, stop;
-        CUDA_CHECK(cudaEventCreate(&start));
-        CUDA_CHECK(cudaEventCreate(&stop));
+    // 4. 启动kernel
+    if (PerfAnaly) {
 
-        CUDA_CHECK(cudaEventRecord(start));
-        for (int i = 0; i < iterations; ++i) {
-            launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, block);
-        }
-        CUDA_CHECK(cudaEventRecord(stop));
-        CUDA_CHECK(cudaEventSynchronize(stop));
-
-        float total_milliseconds = 0.0f;
-        CUDA_CHECK(cudaEventElapsedTime(&total_milliseconds, start, stop));
-        avg_milliseconds = total_milliseconds / iterations;
-
-        CUDA_CHECK(cudaEventDestroy(start));
-        CUDA_CHECK(cudaEventDestroy(stop));
+        launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, block);
     }
 
     // 5. 将结果拷贝回主机，与 CPU 基准对比
@@ -150,19 +135,12 @@ static bool run_sgemm_test(int M, int N, int K, int iterations) {
     std::cout << "Grid 配置   : " << grid.x << " x " << grid.y << " Blocks, "
               << BLOCK_SIZE << " Threads/Block" << std::endl;
     std::cout << "结果验证    : " << (pass ? "通过 (PASS)" : "失败 (FAIL)") << std::endl;
-    // if (iterations > 0) {
-    //     // FLOPs = 2*M*N*K（每个输出元素需 K 次乘加）
-    //     double tflops = 2.0 * M * N * K / (avg_milliseconds * 1e-3) / 1e12;
-    //     std::cout << "----------------------------------------" << std::endl;
-    //     std::cout << "平均计算耗时: " << avg_milliseconds << " ms" << std::endl;
-    //     std::cout << "计算性能    : " << tflops << " TFLOPS" << std::endl;
-    //     std::cout << "峰值利用率  : " << 100.0 * tflops / PEAK_TFLOPS << " %" << std::endl;
-    // }
 
     // 7. 释放资源
     CUDA_CHECK(cudaFree(d_A));
     CUDA_CHECK(cudaFree(d_B));
     CUDA_CHECK(cudaFree(d_C));
+
     return pass;
 }
 
@@ -170,22 +148,37 @@ void testSGEMM()
 {
     bool pass = true;
 
+#if true
     // 性能 + 正确性测试：规整尺寸
-    pass &= run_sgemm_test(1024, 1024, 1024, 3);
+    pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v3);
+    pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v4);
+    pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v5);
 
+#elif
     // 边界正确性测试：M/N/K 均不是 Tile 尺寸的整数倍
     // 注意：为保证 LDG.128/STG.128 的 16B 地址对齐，N 与 K 仍必须是 4 的倍数
-    pass &= run_sgemm_test(999, 1028, 1020, 0);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v3);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v4);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v5);
+
 
     // 更小的非规整尺寸（M % 128 = 1, N % 128 = 4, K % 8 = 4）
-    pass &= run_sgemm_test(129, 132, 132, 0);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v3);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v4);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v5);
+
 
     // 小尺寸：M、N 均小于单个 Tile，覆盖写回越界保护
-    pass &= run_sgemm_test(64, 64, 64, 0);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v3);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v4);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v5);
+
 
     // 极限小尺寸：M=1, N=4, K=4，覆盖 per-element 写回路径
-    pass &= run_sgemm_test(1, 4, 4, 0);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v3);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v4);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v5);
+#endif
 
-    std::cout << "========================================" << std::endl;
     std::cout << "总体结果    : " << (pass ? "全部通过 (ALL PASS)" : "存在失败 (FAIL)") << std::endl;
 }

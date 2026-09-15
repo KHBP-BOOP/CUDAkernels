@@ -1,6 +1,6 @@
-#include "vecAdd.cuh"
-#include "vectorDotProduct.cuh"
-#include "treeReduction.cuh"
+// #include "vecAdd.cuh"
+// #include "vectorDotProduct.cuh"
+// #include "treeReduction.cuh"
 #include "SGEMM.cuh"
 
 #include <iostream>

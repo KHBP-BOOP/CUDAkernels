@@ -1,5 +1,6 @@
-
 #include <cuda_runtime_api.h>
+
+#include <iostream>
 
 #define FLOAT4(f) *reinterpret_cast<float4*>(&f)
 #define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
@@ -8,7 +9,7 @@
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
 template <int BM, int BK, int BLOCK_SIZE>
-__device__ void load_tile_A(const float *__restrict__ A, float As[BK][BM],
+__device__ void load_tile_A_to_transposed_As(const float *__restrict__ A, float As[BK][BM],
                             int M, int K, int r0, int k, int tid)
 {
     // 线程重排: 128 * 2 布局, 实现合并访问以及float4向量化 (coalesced access)
@@ -42,7 +43,7 @@ __device__ void load_tile_A(const float *__restrict__ A, float As[BK][BM],
 
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
-template <int BM = 128, int BK = 8, int BLOCK_SIZE>
+template <int BM, int BK, int BLOCK_SIZE>
 __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
                             int M, int K, int r0, int k, int tid)
 {
@@ -171,25 +172,17 @@ __global__ void sgemm_thread_tiling_v3(const float *A, const float *B, float *C,
             //1个线程读取2个数据至b_frag
             b_frag[lane_row * 2] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2];
             b_frag[lane_row * 2 + 1] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2 + 1];
- 
+            
             
             // 广播 b_frag
+            // 每个线程遍历各自的b_frag，从同列对应线程的或自身的b_frag中获取数据，使得同列线程的b_frag均存有正确数据且一致
             #pragma unroll
             for (int j = 0; j < TN; j += 2) {
                 
-                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X);
-                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X);
+                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X / 2 + lane_col);
+                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X / 2 + lane_col);
 
             }
-
-            #pragma unroll
-            for (int j = 0; j < WARP_Y; j++) {
-                
-                b_frag[j * 2]     = __shfl_sync(0xffffffff, b_frag[j * 2],     j * WARP_X + lane_col);
-                b_frag[j * 2 + 1] = __shfl_sync(0xffffffff, b_frag[j * 2 + 1], j * WARP_X + lane_col);
-            }
-
-
 
             // if (lane_col == 0) {
 
@@ -426,7 +419,7 @@ __global__ void sgemm_thread_tiling_v5(const float *A, const float *B, float *C,
     {
 
         // 协作加载 A、B 到 Shared Memory
-        load_tile_A<BM, BK, BLOCK_SIZE>(A, As, M, K, by * BM, bk, tid);
+        load_tile_A_to_transposed_As<BM, BK, BLOCK_SIZE>(A, As, M, K, by * BM, bk, tid);
         load_tile_B<BN, BK, BLOCK_SIZE>(B, Bs, K, N, bx * BN, bk, tid);
 
         __syncthreads();
@@ -525,10 +518,26 @@ __global__ void sgemm_thread_tiling_v5(const float *A, const float *B, float *C,
 // 直接跨翻译单元链接 __global__ 模板实例化存在可见性问题
 // （rdc=false 模式下模板实例化的 host stub 默认具有内部链接属性），
 // 因此测试代码 (src/testSGEMM.cu) 通过本函数间接启动核函数
-void launch_sgemm_thread_tiling(const float *A, const float *B, float *C,
+void launch_sgemm_thread_tiling_v3(const float *A, const float *B, float *C,
                                 int M, int N, int K, dim3 grid, dim3 block)
 {
     sgemm_thread_tiling_v3<128, 128, 8, 256, 8, 4, 8, 8> <<<grid, block>>>(A, B, C, M, N, K);
+    std::cout << "started sgemm_thread_tiling_v3 once." << std::endl;
+}
+
+
+void launch_sgemm_thread_tiling_v4(const float *A, const float *B, float *C,
+                                int M, int N, int K, dim3 grid, dim3 block)
+{
     sgemm_thread_tiling_v4<128, 128, 8, 256, 8, 4, 8, 8> <<<grid, block>>>(A, B, C, M, N, K);
+    std::cout << "started sgemm_thread_tiling_v4 once." << std::endl;
+
+}
+
+
+void launch_sgemm_thread_tiling_v5(const float *A, const float *B, float *C,
+                                int M, int N, int K, dim3 grid, dim3 block)
+{
     sgemm_thread_tiling_v5<128, 128, 8, 256, 8, 4, 8, 8> <<<grid, block>>>(A, B, C, M, N, K);
+    std::cout << "started sgemm_thread_tiling_v5 once." << std::endl;
 }

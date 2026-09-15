@@ -16,28 +16,34 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE release)
-endif()
-
-string(APPEND CMAKE_CUDA_FLAGS " -lineinfo -Xptxas=-v")
-
+set(CMAKE_BUILD_TYPE release)
+set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 
 
 
 
 #生成可执行文件
-add_executable(EXEFILE
-    src/Main.cpp
-#    src/vecAdd.cu
-#    src/vectorDotProduct.cu
-#    src/DEVICE.cu
-#    src/treeReduction.cu
+add_executable(EXEFILE)
+
+target_sources(EXEFILE
+PRIVATE
+    src/Main.cc
+    # src/vecAdd.cu
+    # src/vectorDotProduct.cu
+    # src/DEVICE.cu
+    # src/treeReduction.cu
     src/SGEMM.cu
     src/testSGEMM.cu
 )
 
-set_source_files_properties(src/blockReduceSum.cu PROPERTIES COMPILE_FLAGS "-g -lineinfo")
+
+target_include_directories(EXEFILE
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+
 
 # 优先使用 CUDAToolkit 自带的 ncu（即使 CUDA bin 不在 PATH 中也能找到）
 find_program(NCU_EXECUTABLE ncu HINTS "${CUDAToolkit_BIN_DIR}")
@@ -45,13 +51,13 @@ if(NCU_EXECUTABLE)
     message(STATUS "Found Nsight Compute: ${NCU_EXECUTABLE}")
 
     # 报告基础文件名（ncu 会自动追加 .ncu-rep 后缀）和输出目录
-    set(NCU_OUTPUT_NAME "my_profile_result" CACHE STRING "Base name of the ncu report")
-    set(NCU_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
+    set(NCU_OUTPUT_NAME "SGEMM_profile_result" CACHE STRING "Base name of the ncu report")
+    set(NCU_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/performance_analysis/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
 
-    # 可选：只对匹配的 kernel 做 profile（regex 语法，如 regex:blockReduceSum）；留空则 profile 全部 kernel
-    set(NCU_KERNEL_FILTER "" CACHE STRING "Optional ncu --kernel-name regex; empty profiles all kernels")
-    # 可选：透传给 ncu 的附加参数，例如 "--launch-count 1 --launch-skip 0"
-    set(NCU_EXTRA_ARGS "" CACHE STRING "Extra arguments passed to ncu")
+    # # 可选：只对匹配的 kernel 做 profile（regex 语法，如 regex:blockReduceSum）；留空则 profile 全部 kernel
+    # set(NCU_KERNEL_FILTER "" CACHE STRING "Optional ncu --kernel-name regex; empty profiles all kernels")
+    # # 可选：透传给 ncu 的附加参数，例如 "--launch-count 1 --launch-skip 0"
+    # set(NCU_EXTRA_ARGS "" CACHE STRING "Extra arguments passed to ncu")
     # 遇到 ERR_NVGPUCTRPERM（性能计数器权限不足）时开启，用 sudo 运行 ncu
     option(NCU_USE_SUDO "Run ncu with sudo (needs passwordless sudo or an interactive terminal)" OFF)
 
@@ -64,24 +70,27 @@ if(NCU_EXECUTABLE)
     endif()
 
     set(_ncu_args --set full -f)
-    if(NCU_EXTRA_ARGS)
-        separate_arguments(_ncu_extra NATIVE_COMMAND "${NCU_EXTRA_ARGS}")
-        list(APPEND _ncu_args ${_ncu_extra})
-    endif()
-    if(NCU_KERNEL_FILTER)
-        list(APPEND _ncu_args --kernel-name "${NCU_KERNEL_FILTER}")
-    endif()
-    list(APPEND _ncu_args -o "${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}" $<TARGET_FILE:EXEFILE>)
+
+    # if(NCU_EXTRA_ARGS)
+    #     separate_arguments(_ncu_extra NATIVE_COMMAND "${NCU_EXTRA_ARGS}")
+    #     list(APPEND _ncu_args ${_ncu_extra})
+    # endif()
+    # if(NCU_KERNEL_FILTER)
+    #     list(APPEND _ncu_args --kernel-name "${NCU_KERNEL_FILTER}")
+    # endif()
+    list(APPEND _ncu_args --import-source on -o "${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}" $<TARGET_FILE:EXEFILE>)
+    
+    target_compile_options(EXEFILE PRIVATE -lineinfo)
 
     # 3. 添加自定义分析 target
-    add_custom_target(profile
+    add_custom_target(profile_ncu
         COMMAND ${_ncu_cmd} ${_ncu_args}
         DEPENDS EXEFILE
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         COMMENT "Running Nsight Compute profiling on EXEFILE -> ${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}.ncu-rep"
         VERBATIM
     )
-    add_custom_command(TARGET profile POST_BUILD
+    add_custom_command(TARGET profile_ncu POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Profile report saved to: ${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}.ncu-rep"
     )
 else()
@@ -89,4 +98,19 @@ else()
 endif()
 
 
-target_include_directories(EXEFILE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+set(NSYS_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/performance_analysis/nsys_reports")
+
+add_custom_target(profile_nsys
+    COMMAND nsys profile
+            --trace=cuda,nvtx,osrt,cuDNN
+            --force-overwrite=true
+            --output="${NSYS_OUTPUT_DIR}/SGEMM_nsys"
+            $<TARGET_FILE:EXEFILE>
+    DEPENDS EXEFILE
+    COMMENT "Running nsys profile on my_target..."
+)
+
+add_custom_command(TARGET profile_nsys POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "Profile report has saved."
+)

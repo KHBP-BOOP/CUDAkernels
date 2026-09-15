@@ -1,2 +1,8 @@
 # out/
 out/**
+
+# performance analysis reports
+performance_analysis/**
+
+# configuration directories
+pyTest/.venv/**
