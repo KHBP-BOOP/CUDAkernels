@@ -28,10 +28,6 @@
         }                                                                         \
     } while (0)
 
-// 与 src/SGEMM.cu 中实例化的模板参数保持一致（用于计算 Grid 配置）
-constexpr int BM = 128, BN = 128;
-constexpr int BLOCK_SIZE = 256;
-
 // CPU 参考实现：i-k-j 循环顺序对 cache 友好，双精度累加作为正确性基准
 static void sgemm_cpu_ref(const std::vector<float>& A, const std::vector<float>& B,
                           std::vector<double>& C, int M, int N, int K)
@@ -78,7 +74,8 @@ static bool verify_result(const std::vector<float>& gpu, const std::vector<doubl
 
 
 
-using FUNC = void (*) (const float*, const float*, float*, int, int, int, dim3, dim3);
+// 与 include/SGEMM.cuh 中的启动封装签名保持一致（grid/block 由封装内部计算）
+using FUNC = void (*) (const float*, const float*, float*, int, int, int);
 
 // 运行一次完整的 SGEMM 测试：分配内存 → 随机初始化 → 核函数预热/计时 → 正确性校验
 // PerfAnaly != 0 时进行性能测试（预热 + 循环计时取平均），为 0 时仅校验正确性
@@ -108,19 +105,17 @@ static bool run_sgemm_test(int M, int N, int K, bool PerfAnaly, FUNC launch_sgem
     CUDA_CHECK(cudaMemcpy(d_A, h_A.data(), a_bytes, cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_B, h_B.data(), b_bytes, cudaMemcpyHostToDevice));
 
-    // 3. 配置 Grid/Block 并启动核函数
-    dim3 block(BLOCK_SIZE);
-    dim3 grid((N + BN - 1) / BN, (M + BM - 1) / BM);
+    // 3. 启动核函数（Grid/Block 由启动封装内部按各自 tile 尺寸计算）
 
     // 预热 GPU（Warm-up），消除驱动懒加载和显卡从省电模式唤醒的延迟
-    launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, block);
+    launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
 
     // 4. 启动kernel
     if (PerfAnaly) {
 
-        launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K, grid, block);
+        launch_sgemm_thread_tiling(d_A, d_B, d_C, M, N, K);
     }
 
     // 5. 将结果拷贝回主机，与 CPU 基准对比
@@ -131,9 +126,7 @@ static bool run_sgemm_test(int M, int N, int K, bool PerfAnaly, FUNC launch_sgem
     sgemm_cpu_ref(h_A, h_B, h_ref, M, N, K);
     bool pass = verify_result(h_C, h_ref, M, N);
 
-    // 6. 打印测试报告
-    std::cout << "Grid 配置   : " << grid.x << " x " << grid.y << " Blocks, "
-              << BLOCK_SIZE << " Threads/Block" << std::endl;
+    // 6. 打印测试结果
     std::cout << "结果验证    : " << (pass ? "通过 (PASS)" : "失败 (FAIL)") << std::endl;
 
     // 7. 释放资源
@@ -150,11 +143,14 @@ void testSGEMM()
 
 #if true
     // 性能 + 正确性测试：规整尺寸
-    pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v3);
-    pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v4);
-    pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v5);
 
-#elif
+    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v1);
+
+    // pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v3);
+    // pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v4);
+    // pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v5);
+
+#else
     // 边界正确性测试：M/N/K 均不是 Tile 尺寸的整数倍
     // 注意：为保证 LDG.128/STG.128 的 16B 地址对齐，N 与 K 仍必须是 4 的倍数
     pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v3);

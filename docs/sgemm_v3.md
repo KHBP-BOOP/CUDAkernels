@@ -19,7 +19,8 @@ Block Limit SM [block]	24
 (8 + 8 + 64) * 4Bytes == 320B per thread
 每线程使用80个寄存器
 
-重构寄存器部分代码。
+调小TM、TN的值
+
 
 
 

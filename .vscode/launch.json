@@ -1,0 +1,11 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debugging for sgemm_v1",
+            "type": "cuda-gdb",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/GCC-13.3.0-x86_64-linux-gnu/EXEFILE"
+        }
+    ]
+}

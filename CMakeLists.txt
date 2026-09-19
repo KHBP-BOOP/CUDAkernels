@@ -16,7 +16,7 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-set(CMAKE_BUILD_TYPE release)
+set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 
@@ -51,8 +51,8 @@ if(NCU_EXECUTABLE)
     message(STATUS "Found Nsight Compute: ${NCU_EXECUTABLE}")
 
     # 报告基础文件名（ncu 会自动追加 .ncu-rep 后缀）和输出目录
-    set(NCU_OUTPUT_NAME "SGEMM_profile_result" CACHE STRING "Base name of the ncu report")
-    set(NCU_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/performance_analysis/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
+    set(NCU_OUTPUT_NAME "ncu_SGEMM_v1_debug" CACHE STRING "Base name of the ncu report")
+    set(NCU_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/reports/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
 
     # # 可选：只对匹配的 kernel 做 profile（regex 语法，如 regex:blockReduceSum）；留空则 profile 全部 kernel
     # set(NCU_KERNEL_FILTER "" CACHE STRING "Optional ncu --kernel-name regex; empty profiles all kernels")
@@ -69,18 +69,13 @@ if(NCU_EXECUTABLE)
         list(INSERT _ncu_cmd 0 sudo)
     endif()
 
-    set(_ncu_args --set full -f)
 
-    # if(NCU_EXTRA_ARGS)
-    #     separate_arguments(_ncu_extra NATIVE_COMMAND "${NCU_EXTRA_ARGS}")
-    #     list(APPEND _ncu_args ${_ncu_extra})
-    # endif()
-    # if(NCU_KERNEL_FILTER)
-    #     list(APPEND _ncu_args --kernel-name "${NCU_KERNEL_FILTER}")
-    # endif()
-    list(APPEND _ncu_args --import-source on -o "${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}" $<TARGET_FILE:EXEFILE>)
-    
-    target_compile_options(EXEFILE PRIVATE -lineinfo)
+
+    set(_ncu_args --set full --import-source on -f -o "${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}" $<TARGET_FILE:EXEFILE>)
+
+    target_compile_options(EXEFILE PRIVATE -g $<$<COMPILE_LANGUAGE:CUDA>:-G>)
+
+
 
     # 3. 添加自定义分析 target
     add_custom_target(profile_ncu
@@ -99,13 +94,13 @@ endif()
 
 
 
-set(NSYS_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/performance_analysis/nsys_reports")
+set(NSYS_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/reports/nsys_reports")
 
 add_custom_target(profile_nsys
     COMMAND nsys profile
             --trace=cuda,nvtx,osrt,cuDNN
             --force-overwrite=true
-            --output="${NSYS_OUTPUT_DIR}/SGEMM_nsys"
+            --output="${NSYS_OUTPUT_DIR}/nsys_SGEMM_v1"
             $<TARGET_FILE:EXEFILE>
     DEPENDS EXEFILE
     COMMENT "Running nsys profile on my_target..."
