@@ -1,3 +1,5 @@
+
+#include <torch/csrc/stable/library.h>
 #include <cuda_runtime_api.h>
 
 #include <iostream>
@@ -5,6 +7,9 @@
 #define FLOAT4(f) *reinterpret_cast<float4*>(&f)
 #define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
 
+
+
+namespace CUDAkernels {
 
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
@@ -641,9 +646,7 @@ void launch_sgemm_thread_tiling_v1(const float *A, const float *B, float *C, int
 
 
 
-void launch_sgemm_thread_tiling_v3(const float *A, const float *B, float *C,
-                                int M, int N, int K)
-{
+void launch_sgemm_thread_tiling_v3(const float *A, const float *B, float *C, int M, int N, int K) {
 
     constexpr int BM = 64;
     constexpr int BN = 64;
@@ -658,10 +661,8 @@ void launch_sgemm_thread_tiling_v3(const float *A, const float *B, float *C,
 }
 
 
-void launch_sgemm_thread_tiling_v4(const float *A, const float *B, float *C,
-                                int M, int N, int K)
-{
-
+void launch_sgemm_thread_tiling_v4(const float *A, const float *B, float *C, int M, int N, int K) {
+    
     constexpr int BM = 64;
     constexpr int BN = 64;
     constexpr int BK = 4;
@@ -677,9 +678,7 @@ void launch_sgemm_thread_tiling_v4(const float *A, const float *B, float *C,
 }
 
 
-void launch_sgemm_thread_tiling_v5(const float *A, const float *B, float *C,
-                                int M, int N, int K)
-{
+void launch_sgemm_thread_tiling_v5(const float *A, const float *B, float *C, int M, int N, int K) {
 
     constexpr int BM = 64;
     constexpr int BN = 64;
@@ -693,3 +692,20 @@ void launch_sgemm_thread_tiling_v5(const float *A, const float *B, float *C,
     sgemm_thread_tiling_v5<128, 128, 8, 256, 8, 4, 8, 8> <<<grid, block>>>(A, B, C, M, N, K);
     std::cout << "started sgemm_thread_tiling_v5 once." << std::endl;
 }
+
+
+STABLE_TORCH_LIBRARY(CUDAkernels, m) {
+
+    // 定义算子的名称、形参列表、返回类型
+    m.def("sgemm_v1(Tensor A, Tensor B, Tensor C, int M, int N, int K) -> void");
+}
+
+STABLE_TORCH_LIBRARY_IMPL(CUDAkernels, CUDA, m) {
+
+    // 实现算子
+    m.impl("sgemm_v1", TORCH_BOX(&launch_sgemm_thread_tiling_v1));
+}
+
+
+ 
+} // namespace CUDAkernels

@@ -16,7 +16,7 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 
 #set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-set(CMAKE_BUILD_TYPE debug)
+set(CMAKE_BUILD_TYPE release)
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 
@@ -41,6 +41,8 @@ PRIVATE
 target_include_directories(EXEFILE
 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/pyTest/.venv/lib64/python3.12/site-packages/torch/include/
 )
 
 
@@ -51,13 +53,9 @@ if(NCU_EXECUTABLE)
     message(STATUS "Found Nsight Compute: ${NCU_EXECUTABLE}")
 
     # 报告基础文件名（ncu 会自动追加 .ncu-rep 后缀）和输出目录
-    set(NCU_OUTPUT_NAME "ncu_SGEMM_v1_debug" CACHE STRING "Base name of the ncu report")
+    set(NCU_OUTPUT_NAME "ncu_SGEMM_v1" CACHE STRING "Base name of the ncu report")
     set(NCU_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/reports/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
 
-    # # 可选：只对匹配的 kernel 做 profile（regex 语法，如 regex:blockReduceSum）；留空则 profile 全部 kernel
-    # set(NCU_KERNEL_FILTER "" CACHE STRING "Optional ncu --kernel-name regex; empty profiles all kernels")
-    # # 可选：透传给 ncu 的附加参数，例如 "--launch-count 1 --launch-skip 0"
-    # set(NCU_EXTRA_ARGS "" CACHE STRING "Extra arguments passed to ncu")
     # 遇到 ERR_NVGPUCTRPERM（性能计数器权限不足）时开启，用 sudo 运行 ncu
     option(NCU_USE_SUDO "Run ncu with sudo (needs passwordless sudo or an interactive terminal)" OFF)
 
@@ -73,7 +71,7 @@ if(NCU_EXECUTABLE)
 
     set(_ncu_args --set full --import-source on -f -o "${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}" $<TARGET_FILE:EXEFILE>)
 
-    target_compile_options(EXEFILE PRIVATE -g $<$<COMPILE_LANGUAGE:CUDA>:-G>)
+    target_compile_options(EXEFILE PRIVATE -lineinfo)
 
 
 

@@ -6,3 +6,6 @@ reports/**
 
 # configuration directories
 pyTest/.venv/**
+
+# debug configuration
+.vscode/launch.json

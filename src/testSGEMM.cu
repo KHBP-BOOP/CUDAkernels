@@ -144,7 +144,7 @@ void testSGEMM()
 #if true
     // 性能 + 正确性测试：规整尺寸
 
-    pass &= run_sgemm_test(1024, 1024, 1024, true, launch_sgemm_thread_tiling_v1);
+    pass &= run_sgemm_test(1024, 1024, 1024, true, CUDAkernels::launch_sgemm_thread_tiling_v1);
 
     // pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v3);
     // pass &= run_sgemm_test(5120, 5120, 5120, true, launch_sgemm_thread_tiling_v4);

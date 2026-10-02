@@ -41,7 +41,7 @@ https://docs.nvidia.com/cuda/ada-tuning-guide/index.html
 
 不考虑落地工程中的端到端耗时与延迟、鲁棒性、每瓦特吞吐量等因素，算力利用率、带宽利用率是以结果为导向的衡量指标；算术强度、全局内存访问率、L1L2缓存命中率是以过程为导向的衡量指标。
 
-![alt text](image.png)
+![alt text](assets/image.png)
 
 
 ### tiling
@@ -976,3 +976,5 @@ https://docs.nvidia.com/cuda/cuda-c-programming-guide/contents.html
 https://forums.developer.nvidia.com/t/how-to-understand-the-bank-conflict-of-shared-mem/260900
 https://caomaolufei.github.io/AIInfraGuide/
 https://zhuanlan.zhihu.com/p/584236348
+
+https://setuptools.pypa.io/en/latest/references/keywords.html
