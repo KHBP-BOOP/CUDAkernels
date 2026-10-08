@@ -1,5 +1,4 @@
 
-#include <torch/csrc/stable/library.h>
 #include <cuda_runtime_api.h>
 
 #include <iostream>
@@ -8,9 +7,9 @@
 #define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
 
 
-
 namespace CUDAkernels {
 
+// v5
 // 协作加载 tileA: 全局内存 → Shared Memory
 // r0 = blockIdx.y * BM,  k = 当前 K 维度起点
 template <int BM, int BK, int BLOCK_SIZE>
@@ -131,13 +130,13 @@ __global__ void sgemm_block_tiling_v1(const float* A, const float* B, float* C,
 
     // 加载 tileA 时的线程重排
     constexpr int A_BLOCK_X = BK;  // = 4
-    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X;  // = 64
+    // constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X;  // = 64
     int a_thread_x = tid % A_BLOCK_X; // 0 ~ 3
     int a_thread_y = tid / A_BLOCK_X; // 0 ~ 63
 
     // 加载 tileB 时的线程重排
     constexpr int B_BLOCK_X = BN;  // = 64
-    constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X;  // = 4
+    // constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X;  // = 4
     int b_thread_x = tid % B_BLOCK_X;
     int b_thread_y = tid / B_BLOCK_X;
 
@@ -209,6 +208,8 @@ __global__ void sgemm_block_tiling_v1(const float* A, const float* B, float* C,
         }
     }
 }
+
+
 
 
 
@@ -352,7 +353,7 @@ __global__ void sgemm_thread_tiling_v3(const float *A, const float *B, float *C,
 
 
 // v4
-template <int BM = 128, int BN = 128, int BK = 8,
+template <int BM, int BN, int BK,
     int BLOCK_SIZE, int Wx, int Wy,
     int TM, int TN>
 __global__ void sgemm_thread_tiling_v4(const float *A, const float *B, float *C, int M, int N, int K)
@@ -484,7 +485,7 @@ __global__ void sgemm_thread_tiling_v4(const float *A, const float *B, float *C,
 
 
 // v5
-template <int BM = 128, int BN = 128, int BK = 8,
+template <int BM, int BN, int BK,
     int BLOCK_SIZE, int Wx, int Wy,
     int TM, int TN>
 __global__ void sgemm_thread_tiling_v5(const float *A, const float *B, float *C, int M, int N, int K)
@@ -622,90 +623,4 @@ __global__ void sgemm_thread_tiling_v5(const float *A, const float *B, float *C,
 
 
 
-
-
-// 主机端启动封装：核函数模板在本翻译单元内完成实例化。
-// 直接跨翻译单元链接 __global__ 模板实例化存在可见性问题
-// （rdc=false 模式下模板实例化的 host stub 默认具有内部链接属性），
-// 因此测试代码 (src/testSGEMM.cu) 通过本函数间接启动核函数
-
-void launch_sgemm_thread_tiling_v1(const float *A, const float *B, float *C, int M, int N, int K) {
-
-    constexpr int BM = 64;
-    constexpr int BN = 64;
-    constexpr int BK = 4;
-    constexpr int BLOCK_SIZE = 256;
-
-    dim3 block(BLOCK_SIZE);
-    dim3 grid((N + BN - 1) / BN, (M + BM - 1) / BM);
-
-    
-    sgemm_block_tiling_v1<BM, BN, BK, BLOCK_SIZE> <<<grid, block>>>(A, B, C, M, N, K);
-}
-
-
-
-
-void launch_sgemm_thread_tiling_v3(const float *A, const float *B, float *C, int M, int N, int K) {
-
-    constexpr int BM = 64;
-    constexpr int BN = 64;
-    constexpr int BK = 4;
-    constexpr int BLOCK_SIZE = 256;
-
-    dim3 block(BLOCK_SIZE);
-    dim3 grid((N + BN - 1) / BN, (M + BM - 1) / BM);
-
-    sgemm_thread_tiling_v3<128, 128, 8, 256, 8, 4, 4, 4> <<<grid, block>>>(A, B, C, M, N, K);
-    std::cout << "started sgemm_thread_tiling_v3 once." << std::endl;
-}
-
-
-void launch_sgemm_thread_tiling_v4(const float *A, const float *B, float *C, int M, int N, int K) {
-    
-    constexpr int BM = 64;
-    constexpr int BN = 64;
-    constexpr int BK = 4;
-    constexpr int BLOCK_SIZE = 256;
-
-    dim3 block(BLOCK_SIZE);
-    dim3 grid((N + BN - 1) / BN, (M + BM - 1) / BM);
-
-
-    sgemm_thread_tiling_v4<128, 128, 8, 256, 8, 4, 8, 8> <<<grid, block>>>(A, B, C, M, N, K);
-    std::cout << "started sgemm_thread_tiling_v4 once." << std::endl;
-
-}
-
-
-void launch_sgemm_thread_tiling_v5(const float *A, const float *B, float *C, int M, int N, int K) {
-
-    constexpr int BM = 64;
-    constexpr int BN = 64;
-    constexpr int BK = 4;
-    constexpr int BLOCK_SIZE = 256;
-
-    dim3 block(BLOCK_SIZE);
-    dim3 grid((N + BN - 1) / BN, (M + BM - 1) / BM);
-
-
-    sgemm_thread_tiling_v5<128, 128, 8, 256, 8, 4, 8, 8> <<<grid, block>>>(A, B, C, M, N, K);
-    std::cout << "started sgemm_thread_tiling_v5 once." << std::endl;
-}
-
-
-STABLE_TORCH_LIBRARY(CUDAkernels, m) {
-
-    // 定义算子的名称、形参列表、返回类型
-    m.def("sgemm_v1(Tensor A, Tensor B, Tensor C, int M, int N, int K) -> void");
-}
-
-STABLE_TORCH_LIBRARY_IMPL(CUDAkernels, CUDA, m) {
-
-    // 实现算子
-    m.impl("sgemm_v1", TORCH_BOX(&launch_sgemm_thread_tiling_v1));
-}
-
-
- 
 } // namespace CUDAkernels

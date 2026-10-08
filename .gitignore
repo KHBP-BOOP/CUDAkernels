@@ -5,7 +5,16 @@ out/**
 reports/**
 
 # configuration directories
-pyTest/.venv/**
+test/.venv/**
 
-# debug configuration
-.vscode/launch.json
+# configuration
+.vscode/**
+
+# temprary files
+tmp/**
+
+# Python bytecode cache files
+python/cudakernels/__pycache__/**\
+
+docs/api-setup-sgemm-block-tiling-v1-kernel-fancy-popcorn.md
+docs/sgemm_v1_template_params.md

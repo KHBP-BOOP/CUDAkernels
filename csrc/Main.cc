@@ -1,7 +1,7 @@
 // #include "vecAdd.cuh"
 // #include "vectorDotProduct.cuh"
 // #include "treeReduction.cuh"
-#include "SGEMM.cuh"
+// #include "sgemm/SGEMM_v1.cuh"
 
 #include <iostream>
 
@@ -13,7 +13,7 @@ int main() {
     //testVecAdd();
     //testVectorDotProduct();
     //testTreeReduction();
-    testSGEMM();
+    
 
 
 

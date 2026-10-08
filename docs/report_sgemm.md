@@ -953,7 +953,6 @@ block thread warp register tiling 原理、本质
 
 数据地址的对齐是硬件自动完成的吗？
 
-tensor core
 
 
 
@@ -967,6 +966,11 @@ tensor core
 
 
 
+
+
+#### tensor core
+
+https://developer.nvidia.com/blog/programming-tensor-cores-cuda-9/
 
 
 参考资料：  
