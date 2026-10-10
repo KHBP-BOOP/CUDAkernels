@@ -19,5 +19,3 @@ torch.ops.load_library(str(_locate_ext()))
 
 sgemm_v1 = torch.ops.CUDAkernels.sgemm_v1
 __all__ = ["sgemm_v1"]
-
-from . import __all__

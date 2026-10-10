@@ -1,18 +1,20 @@
 # SGEMM（未完成）
 
-C = A @ B
-
-$A \in \mathbb{R}^{M \times K}$
-
-$B \in \mathbb{R}^{K \times N}$
-
-$C \in \mathbb{R}^{M \times N}$
-
 ***GEMM 优化的本质是用寄存器和共享内存（Shared Memory）挡住对全局内存（Global Memory）的访问。*** 
 
-
 v3及之后版本的代码均为原创  
-严格根据NVIDIA GeForce RTX 4060 Laptop GPU进行适配开发
+
+
+
+
+## 环境
+
+PyTorch: 2.13.0+cu130
+PyTorch CUDA: 13.0
+CUDA Toolkit: 13.2
+CUDA available: True
+GPU: NVIDIA GeForce RTX 4060 Laptop GPU
+Compute capability: (8, 9)
 
 
 
@@ -26,7 +28,7 @@ v3及之后版本的代码均为原创
 每流式多处理器最大可驻留的Warp数 48  
 每流式多处理器最大可驻留线程数 1536  
 GDDR6显存  8GB
-显存位宽  128位
+显存位宽  128位 
 显存带宽  256.03 GB/s
 cuda core数量 3072
 L2缓存大小 24MB  
@@ -178,7 +180,7 @@ __global__ void sgemm_block_tiling(float* A, float* B, float* C,
 
 - 将tileC分为Tm * Tn个格，一个线程跨步计算每个格中的一个元素，共Tm * Tn个元素。不同于1线程1数据+内积矩乘，采用1线程多数据（扩大tileC尺寸）+外积矩乘，并通过寄存器级缓存实现寄存器复用：
 
-借助编译器优化，1个线程加载Tm + TN个数据，完成Tm * Tn次乘加运算FMA，提高了访存比
+借助编译器优化，1个线程加载Tm + TN个数据，完成Tm * Tn次混合乘加运算FMA，提高了访存比
 
 为什么不叫tile级分块？？？
 

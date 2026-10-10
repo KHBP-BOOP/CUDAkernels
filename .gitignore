@@ -14,7 +14,7 @@ test/.venv/**
 tmp/**
 
 # Python bytecode cache files
-python/cudakernels/__pycache__/**\
+python/cudakernels/__pycache__/**
 
 docs/api-setup-sgemm-block-tiling-v1-kernel-fancy-popcorn.md
 docs/sgemm_v1_template_params.md

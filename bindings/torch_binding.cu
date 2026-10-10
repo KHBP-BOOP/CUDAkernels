@@ -29,7 +29,7 @@ using torch::stable::Tensor;
 namespace {
 void check_f32_cuda_2d_contig(const Tensor& t, const char* name) {
     STD_TORCH_CHECK(t.defined(),                          name, " 必须是已定义张量");
-    STD_TORCH_CHECK(t.dim() == 2,                         name, " 必须是 2 维");
+    STD_TORCH_CHECK(t.dim() == 2,                         name, " 必须是 2 维张量");
     STD_TORCH_CHECK(t.scalar_type() == ScalarType::Float, name, " 必须是 float32");
     STD_TORCH_CHECK(t.is_contiguous(),                    name, " 必须是连续内存");
     STD_TORCH_CHECK(t.is_cuda(),                          name, " 必须在 CUDA 设备上");
@@ -38,9 +38,12 @@ void check_f32_cuda_2d_contig(const Tensor& t, const char* name) {
 
 // 必须在匿名 namespace 之外：TORCH_BOX 把它的地址用作非类型模板实参。
 Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
+
     check_f32_cuda_2d_contig(a, "a");
     check_f32_cuda_2d_contig(b, "b");
+
     STD_TORCH_CHECK(a.get_device_index() == b.get_device_index(), "a 与 b 必须在同一设备");
+
 
     const int64_t M = a.size(0), K = a.size(1);
     STD_TORCH_CHECK(b.size(0) == K, "形状不匹配: b 的第 0 维应等于 ", K);
@@ -48,8 +51,9 @@ Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
 
     // launcher 与 kernel 内部都用 int 索引，这里收紧到 int32
     constexpr int64_t kMax = std::numeric_limits<int32_t>::max();
-    STD_TORCH_CHECK(M > 0 && N > 0 && K > 0 && M <= kMax && N <= kMax && K <= kMax,
+    STD_TORCH_CHECK(M >= 0 && N >= 0 && K >= 0 && M <= kMax && N <= kMax && K <= kMax,
                     "M/N/K 必须为正且不超过 int32 范围");
+
 
     const torch::stable::DeviceIndex dev = a.get_device_index();
     torch::stable::accelerator::DeviceGuard guard(dev);   // 绑定当前设备

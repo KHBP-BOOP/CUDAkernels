@@ -1,45 +1,92 @@
-"""sgemm_block_tiling_v1 vs cuBLAS baseline。
+""" benchmark流程
 
-用法：
-    test/.venv/bin/python test/bench_sgemm.py          # 只做精度校验
-    cmake --build out/build/<preset> --target profile_ncu   # 出 ncu-rep
+1. import标准库、torch库、自定义的python库
+2. 指定GEMM算子执行的精度
+3. 精度测试 + 性能分析
+
 """
+
 import sys
 from pathlib import Path
-
 import torch
 
-# 不依赖 PYTHONPATH：sudo 下环境变量会被清掉，导入路径必须写死在脚本里
 try:
     import cudakernels
 except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
     import cudakernels
 
-# 真 FP32，否则 cuBLAS 在 sm_89 上会走 TF32 tensor core，与我们的 kernel 不可比
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.set_float32_matmul_precision("highest")
 
-M = N = K = 1024
-torch.manual_seed(0)
-a = torch.randn(M, K, device="cuda")
-b = torch.randn(K, N, device="cuda")
+assert torch.cuda.is_available()
 
-# 预热：让 cuBLAS 完成启发式选核，也完成我们 kernel 的首次加载。
-# 必须在 NVTX 窗口之外，否则这些 launch 也会被 ncu 抓进去。
-for _ in range(5):
-    ref = a @ b
-    out = cudakernels.sgemm_v1(a, b)
-torch.cuda.synchronize()
+torch.backends.cuda.matmul.fp32_precision="ieee"
 
-# 精度校验也在窗口外
-max_err = (out - ref).abs().max().item()
-print(f"max|Δ| = {max_err:.3e}")
-assert torch.allclose(out, ref, atol=1e-2, rtol=1e-2), "精度不达标"
 
-# ---- ncu 的 profile 窗口：窗口内恰好两次 kernel launch，无其它 ----
-torch.cuda.nvtx.range_push("profile")
-ref = a @ b                        # cuBLAS baseline
-out = cudakernels.sgemm_v1(a, b)   # sgemm_block_tiling_v1<64,64,4,256>
-torch.cuda.synchronize()
-torch.cuda.nvtx.range_pop()
+
+
+def calculate_test(A: torch.Tensor, B: torch.Tensor):
+    C_custom = cudakernels.sgemm_v1(A, B)
+    C_torch = torch.mm(A, B)
+
+    # 默认值 rtol=1.3e-6 atol=1e-5
+    torch.testing.assert_close(C_custom, C_torch, rtol = 1e-4, atol = 1e-4)
+
+def various_input_correctness_test(M: int, K: int, N: int) -> None:
+
+    # 输入矩阵的元素值随机
+    A = torch.randn((M, K), device="cuda", dtype=torch.float32)
+    B = torch.randn((K, N), device="cuda", dtype=torch.float32)
+
+    calculate_test(A, B)
+
+
+    # 输入矩阵的元素值全为零
+    A.zero_()
+    B.zero_()
+
+    calculate_test(A, B)
+
+
+    # 输入矩阵的主对角线元素全为零
+    # 部分测试用例中张量的形状对应为方阵，故次小节包含了对单位矩阵的测试
+    A.fill_diagonal_(1.0)
+    B.fill_diagonal_(1.0)
+
+    calculate_test(A, B)
+
+def input_random_performance_analysis(M: int, K: int, N: int) -> None :
+
+    A = torch.randn((M, K), device="cuda", dtype=torch.float32)
+    B = torch.randn((K, N), device="cuda", dtype=torch.float32)
+
+
+    # warm up
+    for _ in range(3):
+        C_custom = cudakernels.sgemm_v1(A, B)
+        C_torch_mm = torch.mm(A, B)
+
+
+    # analysis
+    torch.cuda.nvtx.range_push("profile")
+
+    C_custom = cudakernels.sgemm_v1(A, B)
+    C_torch_mm = torch.mm(A, B)
+
+    torch.cuda.synchronize()
+    torch.cuda.nvtx.range_pop()
+
+
+
+
+# a）精度测试
+various_input_correctness_test(2, 2, 2)
+various_input_correctness_test(7, 13, 5)
+various_input_correctness_test(31, 63, 47)
+various_input_correctness_test(64, 64, 64)
+various_input_correctness_test(256, 512, 128)
+various_input_correctness_test(127, 129, 65)
+various_input_correctness_test(1024, 1024, 1024)
+
+
+# b）Nsight Compute 性能分析
+input_random_performance_analysis(1024, 1024, 1024)
