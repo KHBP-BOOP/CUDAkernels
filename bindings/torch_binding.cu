@@ -14,7 +14,7 @@
 
 namespace CUDAkernels {
 
-void instantiated_sgemm_block_tiling_v1(cudaStream_t s, const float *A, const float *B, float *C, int M, int N, int K);
+void instantiated_sgemm_block_tiling(cudaStream_t s, const float *A, const float *B, float *C, int M, int N, int K);
 
 } // namespace CUDAkernels
 
@@ -51,7 +51,7 @@ Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
 
     // launcher 与 kernel 内部都用 int 索引，这里收紧到 int32
     constexpr int64_t kMax = std::numeric_limits<int32_t>::max();
-    STD_TORCH_CHECK(M >= 0 && N >= 0 && K >= 0 && M <= kMax && N <= kMax && K <= kMax,
+    STD_TORCH_CHECK(M > 1 && N > 1 && K > 1 && M <= kMax && N <= kMax && K <= kMax,
                     "M/N/K 必须为正且不超过 int32 范围");
 
 
@@ -65,7 +65,7 @@ Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
     auto stream = torch::stable::accelerator::getCurrentStream(dev);
     cudaStream_t raw = reinterpret_cast<cudaStream_t>(stream.nativeHandle());
 
-    CUDAkernels::instantiated_sgemm_block_tiling_v1(
+    CUDAkernels::instantiated_sgemm_block_tiling(
         raw,
         a.const_data_ptr<float>(),
         b.const_data_ptr<float>(),

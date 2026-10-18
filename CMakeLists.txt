@@ -14,12 +14,16 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 set(CMAKE_CUDA_ARCHITECTURES 89)
 
-set(CMAKE_BUILD_TYPE release)
+set(CMAKE_CUDA_FLAGS_DEBUG "-g -G" CACHE STRING "" FORCE)
+
+# generator为单配置生成器Unix Makefiles
+# 构建类型已在 configuration过程对应的预设文件 中被确定
+
 # set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 # set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "" FORCE)
 
-set(TORCH_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test/.venv/lib64/python3.12/site-packages/torch/lib")
-set(TORCH_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test/.venv/lib64/python3.12/site-packages/torch/include")
+set(TORCH_LIB_DIR "${PROJECT_SOURCE_DIR}/test/.venv/lib64/python3.12/site-packages/torch/lib")
+set(TORCH_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/test/.venv/lib64/python3.12/site-packages/torch/include")
 
 
 
@@ -35,9 +39,8 @@ target_compile_definitions(cudakernels_torch PRIVATE USE_CUDA)
 
 target_include_directories(cudakernels_torch
 PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/csrc/sgemm/
-PRIVATE
-    ${TORCH_INCLUDE_DIR}/
+    ${PROJECT_SOURCE_DIR}/csrc
+    ${TORCH_INCLUDE_DIR}
 )
 
 # 与 torch 共用 libcudart.so.13
@@ -46,10 +49,9 @@ set_target_properties(cudakernels_torch PROPERTIES CUDA_RUNTIME_LIBRARY Shared)
 # 链 libtorch
 target_link_libraries(cudakernels_torch
 PRIVATE
-    "${TORCH_LIB_DIR}/libtorch_cpu.so"     # 除下面一个外，全部符号都在这里
-PRIVATE
-    "${TORCH_LIB_DIR}/libtorch_cuda.so")   # torch_c10_cuda_check_msg
-
+    "${TORCH_LIB_DIR}/libtorch_cpu.so"
+    "${TORCH_LIB_DIR}/libtorch_cuda.so" # torch_c10_cuda_check_msg
+)
 
 
 
@@ -59,14 +61,14 @@ PRIVATE
 # 优先使用 CUDAToolkit 自带的 ncu（即使 CUDA bin 不在 PATH 中也能找到）
 find_program(NCU_EXECUTABLE ncu HINTS "${CUDAToolkit_BIN_DIR}")
 
-set(NCU_PYTHON "${CMAKE_CURRENT_SOURCE_DIR}/test/.venv/bin/python" CACHE FILEPATH "")
-set(NCU_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/test/bench_sgemm.py" CACHE FILEPATH "")
+set(NCU_PYTHON "${PROJECT_SOURCE_DIR}/test/.venv/bin/python" CACHE FILEPATH "")
+set(NCU_SCRIPT "${PROJECT_SOURCE_DIR}/test/bench_sgemm.py" CACHE FILEPATH "")
 
 if(NCU_EXECUTABLE)
     message(STATUS "Found Nsight Compute: ${NCU_EXECUTABLE}")
 
     # 设置报告的文件名和输出目录
-    set(NCU_OUTPUT_NAME "ncu_SGEMM_v1" CACHE STRING "Base name of the ncu report")
+    set(NCU_OUTPUT_NAME "ncu_SGEMM_v1_4" CACHE STRING "Base name of the ncu report" FORCE)
     
     set(NCU_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/reports/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
     #创建输出目录
@@ -78,8 +80,7 @@ if(NCU_EXECUTABLE)
         --set full
         --import-source on
 
-        --target-processes all
-        --nvtx --nvtx-include "profile/"
+        --nvtx --nvtx-include "ncu_profile/"
         
         -f
         -o "${NCU_OUTPUT_DIR}/${NCU_OUTPUT_NAME}"
@@ -121,6 +122,8 @@ set(NSYS_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/reports/nsys_reports")
 
 add_custom_target(profile_nsys
     COMMAND nsys profile
+            -d 5
+            --gpu-metrics-devices=all
             --trace=cuda,nvtx,osrt,cuDNN
             --force-overwrite=true
             --output="${NSYS_OUTPUT_DIR}/nsys_SGEMM_v1"

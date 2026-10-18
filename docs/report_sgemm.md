@@ -362,13 +362,14 @@ v2：
 v2相较于v1，写回结果时采用了不同分块策略，
 
 ## version 3
-block 级 tiling + warp 级 tiling + 线程级寄存器 tiling
 
+```
+// v3
 template <int BM, int BN, int BK,
     int BLOCK_SIZE, int Wx, int Wy,
     int TM, int TN>
-__global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, int M, int N, int K)
-{
+__global__ void sgemm_thread_tiling_v3(const float *A, const float *B, float *C, int M, int N, int K) {
+
     __shared__ float As[BM][BK];
     __shared__ float Bs[BK][BN];
 
@@ -386,6 +387,8 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 
     const int WARP_Y = Wy; // 4
     const int WARP_X = Wx; // 8
+    const int C_BLOCK_X = BN / TN;
+    const int C_BLOCK_Y = BM / TM;
 
     // 每一列 C_BLOCK_Y / WARP_Y 个 warp tile
     const int warp_tile_per_col = C_BLOCK_Y / WARP_Y;
@@ -417,35 +420,28 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
             //1个线程读取1个数据至a_frag
             a_frag[lane_col] = As[warp_row * WARP_Y * TM + lane_row * TM + lane_col][k];
 
+            //广播a_frag
             #pragma unroll
             for (int i = 0; i < WARP_X; i++) {
-                
-                
+
                 a_frag[i] = __shfl_sync(0xffffffff, a_frag[i], i, 8);
             }
+
 
             //1个线程读取2个数据至b_frag
             b_frag[lane_row * 2] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2];
             b_frag[lane_row * 2 + 1] = Bs[k][warp_col * WARP_X * TN + lane_col * TN + lane_row * 2 + 1];
- 
+            
             
             // 广播 b_frag
+            // 每个线程遍历各自的b_frag，从同列对应线程的或自身的b_frag中获取数据，使得同列线程的b_frag均存有正确数据且一致
             #pragma unroll
             for (int j = 0; j < TN; j += 2) {
                 
-                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X);
-                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X);
+                b_frag[j] = __shfl_sync(0xffffffff, b_frag[j], j * WARP_X / 2 + lane_col);
+                b_frag[j + 1] = __shfl_sync(0xffffffff, b_frag[j + 1], j * WARP_X / 2 + lane_col);
 
             }
-
-            #pragma unroll
-            for (int j = 0; j < WARP_Y; j++) {
-                
-                b_frag[j * 2]     = __shfl_sync(0xffffffff, b_frag[j * 2],     j * WARP_X + lane_col);
-                b_frag[j * 2 + 1] = __shfl_sync(0xffffffff, b_frag[j * 2 + 1], j * WARP_X + lane_col);
-            }
-
-
 
             // if (lane_col == 0) {
 
@@ -502,6 +498,7 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
     }
 
 }
+```
 
 优化共享内存分块载入寄存器数组部分。核心为通过 warp 内 shuffle 让一条线程加载的数据被同 warp 的其它线程复用。
 
@@ -511,10 +508,9 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 换成了  
 warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM + b * TN)*个线程进行读操作
 
-4*8 进行读取操作的线程数量最少
+经不等式计算，长与宽越接近读取操作越少；故取warp尺寸为4*8
 
-!!! micro-optimization：
-彻底消除 divergence.
+彻底消除 divergence
 
 
 ## version 4
@@ -527,80 +523,12 @@ warp尺寸4 * 8、block内**仅warp内lane的x、y方向索引为0**的*O(a * TM
 
 
 
-```cpp
-#include <cuda_runtime_api.h>
-
-#define FLOAT4(f) *reinterpret_cast<float4*>(&f)
-#define CONST_FLOAT4(f) *reinterpret_cast<const float4*>(&f)
-
-// 协作加载 tileA: 全局内存 → Shared Memory
-// r0 = blockIdx.y * BM,  k = 当前 K 维度起点
-template <int BM = 128, int BK = 8, int BLOCK_SIZE>
-__device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
-                            int M, int K, int r0, int k, int tid)
-{
-    // 线程重排: 128 * 2 布局, 实现合并访问以及float4向量化 (coalesced access)
-    constexpr int A_BLOCK_X = BK / 4;                     // = 2
-    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X; // = 128
-    int a_thread_x = tid % A_BLOCK_X;                 // 0 ~ 1
-    int a_thread_y = tid / A_BLOCK_X;                 // 0 ~ 127
-
-    // float4向量化前：32 * 8个线程，每个线程做4次LDG.32，128 * 8个数据循环4次处理完成
-    // float4向量化后：128 * 2个线程，每个线程做1次LDG.128，128 * 8个数据1次即可处理完成
-    #pragma unroll
-    for (int i = a_thread_y; i < BM; i += A_BLOCK_Y) {
-
-        // 每个thread在block中的索引
-        int r = r0 + i, c = k + a_thread_x * 4;
-
-        // 计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
-        // 为确保LDG.128的16B对齐，K必须是4的倍数（最优情况下是 BK=8 的倍数）
-        // k为8的倍数，故c一定为4的倍数；c、K均为4的倍数，故不存在数据丢失情况
-        float4 temp = (r < M && c + 3 < K) ? CONST_FLOAT4(A[r * K + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
-
-        // 同一block内，具体一次K维度的循环中，所有thread的r0一定、k一定
-        FLOAT4(As[i][a_thread_x * 4]) = temp; // STS.128
-
-        //warp32个线程中，每个线程处理一个float4类型，共512B；
-        //硬件将其划分为4个128B内存事务，每个事务均占满SMEM的32个bank，流水线串行执行事务时无bank conflict
-    }
-}
-
-// 协作加载 tileB: 全局内存 → Shared Memory
-// c0 = blockIdx.x * BN,  k = 当前 K 维度起点
-template <int BN, int BK, int BLOCK_SIZE>
-__device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
-                            int K, int N, int c0, int k, int tid)
-{
-    // 线程重排: 8×32 布局, 实现合并访问
-    constexpr int B_BLOCK_X = 128 / 4;
-    constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X; // = 8
-    int b_thread_x = tid % B_BLOCK_X;                 // 0 ~ 31
-    int b_thread_y = tid / B_BLOCK_X;                 // 0 ~ 7
-
-    // float4向量化前：8 * 32个线程，每个线程做4次LDG.32，8 * 128个数据循环4次处理完成
-    // float4向量化后：8 * 32个线程，每个线程做1次LDG.128，8 * 128个数据1次即可处理完成
-    #pragma unroll
-    for (int j = b_thread_y; j < BK; j += B_BLOCK_Y) {
-
-        // 每个thread在block中的索引
-        int r = k + j, c = c0 + b_thread_x * 4;
-
-        // 计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
-        // 为确保LDG.128的16B对齐，N必须是4的倍数（最优情况下是 BN=128 的倍数）
-        // c0 = bx * BN，故c一定为4的倍数，不存在数据丢失情况
-        float4 temp = (r < K && c + 3 < N) ? CONST_FLOAT4(B[r * N + c]) : make_float4(0.f, 0.f, 0.f, 0.f); // LDG.128
-
-        // 同一block内，具体一次K维度的循环中，所有thread的c0一定、k一定
-        FLOAT4(Bs[j][b_thread_x * 4]) = temp; // STS.128
-    }
-}
-
-
-template <int BM = 128, int BN = 128, int BK = 8,
+``` cpp
+// v4
+template <int BM, int BN, int BK,
     int BLOCK_SIZE, int Wx, int Wy,
     int TM, int TN>
-__global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, int M, int N, int K)
+__global__ void sgemm_thread_tiling_v4(const float *A, const float *B, float *C, int M, int N, int K)
 {
     __shared__ float As[BM][BK];
     __shared__ float Bs[BK][BN];
@@ -725,17 +653,6 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 
     }
 }
-
-// 主机端启动封装：核函数模板在本翻译单元内完成实例化。
-// 直接跨翻译单元链接 __global__ 模板实例化存在可见性问题
-// （rdc=false 模式下模板实例化的 host stub 默认具有内部链接属性），
-// 因此测试代码 (src/testSGEMM.cu) 通过本函数间接启动核函数
-void launch_sgemm_thread_tiling(const float *A, const float *B, float *C,
-                                int M, int N, int K, dim3 grid, dim3 block)
-{
-    sgemm_thread_tiling<128, 128, 8, 256, 8, 4, 8, 8>
-        <<<grid, block>>>(A, B, C, M, N, K);
-}
 ```
 
 
@@ -796,11 +713,12 @@ B 2way bc
 
 
 
-
-template <int BM = 128, int BN = 128, int BK = 8,
+```
+// v5
+template <int BM, int BN, int BK,
     int BLOCK_SIZE, int Wx, int Wy,
     int TM, int TN>
-__global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, int M, int N, int K)
+__global__ void sgemm_thread_tiling_v5(const float *A, const float *B, float *C, int M, int N, int K)
 {
     __shared__ float As[BK][BM];
     __shared__ float Bs[BK][BN];
@@ -842,7 +760,7 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
     {
 
         // 协作加载 A、B 到 Shared Memory
-        load_tile_A<BM, BK, BLOCK_SIZE>(A, As, M, K, by * BM, bk, tid);
+        load_tile_A_to_transposed_As<BM, BK, BLOCK_SIZE>(A, As, M, K, by * BM, bk, tid);
         load_tile_B<BN, BK, BLOCK_SIZE>(B, Bs, K, N, bx * BN, bk, tid);
 
         __syncthreads();
@@ -932,7 +850,7 @@ __global__ void sgemm_thread_tiling(const float *A, const float *B, float *C, in
 
     }
 }
-
+```
 
 
 总结：

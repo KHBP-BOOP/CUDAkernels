@@ -1,7 +1,7 @@
 # out/
 out/**
 
-# performance analysis reports
+# profiling reports
 reports/**
 
 # configuration directories
@@ -16,5 +16,6 @@ tmp/**
 # Python bytecode cache files
 python/cudakernels/__pycache__/**
 
+# output docs
 docs/api-setup-sgemm-block-tiling-v1-kernel-fancy-popcorn.md
 docs/sgemm_v1_template_params.md
