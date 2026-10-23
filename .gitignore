@@ -9,6 +9,7 @@ test/.venv/**
 
 # configuration
 .vscode/**
+.claude/**
 
 # temprary files
 tmp/**

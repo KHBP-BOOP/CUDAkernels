@@ -62,20 +62,31 @@ def input_random_ncu_profiling(M: int, K: int, N: int) -> None :
     B = torch.randn((K, N), device="cuda", dtype=torch.float32)
 
 
-    # warm up
+
+    # CUDAkernels warm up
     for _ in range(3):
         C_custom = cudakernels.sgemm_v1(A, B)
-        C_torch_mm = torch.mm(A, B)
-
 
     # profiling
     torch.cuda.nvtx.range_push("ncu_profile")
-
     C_custom = cudakernels.sgemm_v1(A, B)
-    C_torch_mm = torch.mm(A, B)
-
     torch.cuda.synchronize()
     torch.cuda.nvtx.range_pop()
+
+
+
+    # cuBLAS warm up
+    for _ in range(3):
+        C_custom = cudakernels.sgemm_v1(A, B)
+
+    # profiling
+    torch.cuda.nvtx.range_push("ncu_profile")
+    C_torch_mm = torch.mm(A, B)
+    torch.cuda.synchronize()
+    torch.cuda.nvtx.range_pop()
+
+
+
 
 
 
