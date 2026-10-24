@@ -68,7 +68,7 @@ if(NCU_EXECUTABLE)
     message(STATUS "Found Nsight Compute: ${NCU_EXECUTABLE}")
 
     # 设置报告的文件名和输出目录
-    set(NCU_OUTPUT_NAME "SGEMM_v2_1" CACHE STRING "Base name of the ncu report" FORCE)
+    set(NCU_OUTPUT_NAME "SGEMM_v2_2" CACHE STRING "Base name of the ncu report" FORCE)
     
     set(NCU_OUTPUT_DIR "${PROJECT_SOURCE_DIR}/reports/ncu_reports" CACHE PATH "Directory where ncu reports are saved")
     #创建输出目录
@@ -77,7 +77,7 @@ if(NCU_EXECUTABLE)
 
     # ncu编译参数
     set(_ncu_args
-        --set full
+        --set basic
         --import-source on
 
         --nvtx --nvtx-include "ncu_profile/"

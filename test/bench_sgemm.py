@@ -102,4 +102,8 @@ various_input_correctness_test(1024, 1024, 1024)
 
 
 # b）Nsight Compute 性能分析
-input_random_ncu_profiling(1024, 1024, 1024)
+# 2048 3072 4096 5120 6144
+# 95%  95%  96%  96%
+# 512 1024
+# 75% 93%
+input_random_ncu_profiling(5120, 5120, 5120)

@@ -26,6 +26,7 @@ namespace {
         static_assert((CHUNKS & (CHUNKS - 1)) == 0, "CHUNKS 必须是 2 的幂");
         return swizzle_col_mask(row & (CHUNKS - 1), col);
     }
+
 }
 
 namespace CUDAkernels {
@@ -74,13 +75,13 @@ template <int BM, int BK, int BLOCK_SIZE>
 __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
                             int M, int K, int r0, int k0, int tid, cuda::pipeline<cuda::thread_scope_thread>& pipe)
 {
-    // 线程重排: 32 * 8 布局, 实现合并访问以及float4向量化 (coalesced access)
-    constexpr int A_BLOCK_X = BK / 4; // = 8
-    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X; // = 32
-    constexpr int A_TILES = (BM + A_BLOCK_Y - 1) / A_BLOCK_Y;
+    // 线程重排: 16 * 4 布局, 实现合并访问以及float4向量化 (coalesced access)
+    constexpr int A_BLOCK_X = BK / 4; // = 4
+    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X; // = 16
+    constexpr int A_TILES = (BM + A_BLOCK_Y - 1) / A_BLOCK_Y; // = 8
 
-    int a_thread_x = tid % A_BLOCK_X;                 // 0 ~ 7
-    int a_thread_y = tid / A_BLOCK_X;                 // 0 ~ 31
+    int a_thread_x = tid % A_BLOCK_X;                 // 0 ~ 3
+    int a_thread_y = tid / A_BLOCK_X;                 // 0 ~ 15
 
     // 计算线程块尺寸时应采用向上取整的除法，故存在线程数量大于数据总量的情况
     if (K % 4 == 0) {
@@ -89,7 +90,8 @@ __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
         int c = k0 + a_thread_x_float4;
 
         #pragma unroll
-        for (int t = 0; t < A_TILES; ++t) { //BM 128
+        for (int t = 0; t < A_TILES; ++t) { // 8次loop
+
             int i = a_thread_y + t * A_BLOCK_Y;
             if (i < BM) {
 
@@ -108,7 +110,7 @@ __device__ void load_tile_A(const float *__restrict__ A, float As[BM][BK],
                     cuda::memcpy_async(
                         &FLOAT4(As[i][swizzle_col<BK / 4>(i, a_thread_x_float4)]),
                         &CONST_FLOAT4(A[r * K + c]),
-                        cuda::aligned_size_t<16>(sizeof(float)),
+                        cuda::aligned_size_t<16>(sizeof(float4)),
                         pipe
                     );
                 }
@@ -146,7 +148,7 @@ __device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
     // 线程重排: 16 * 16 布局, 实现合并访问
     constexpr int B_BLOCK_X = BN / 4; // 16
     constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X; // = 16
-    constexpr int B_TILES = (BK + B_BLOCK_Y - 1) / B_BLOCK_Y; // 2
+    constexpr int B_TILES = (BK + B_BLOCK_Y - 1) / B_BLOCK_Y; // 1
     int b_thread_x = tid % B_BLOCK_X;                 // 0 ~ 15
     int b_thread_y = tid / B_BLOCK_X;                 // 0 ~ 15
 
@@ -176,7 +178,7 @@ __device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
                     cuda::memcpy_async(
                         &FLOAT4(Bs[j][b_thread_x_float4]),
                         &CONST_FLOAT4(B[r * N + c]),
-                        cuda::aligned_size_t<16>(sizeof(float)),
+                        cuda::aligned_size_t<16>(sizeof(float4)),
                         pipe
                     );
                 }
@@ -210,15 +212,16 @@ __device__ void load_tile_B(const float *__restrict__ B, float Bs[BK][BN],
 template <int BM, int BN, int BK, int BLOCK_SIZE, int numStages>
 __global__ void sgemm_block_tiling(const float* A, const float* B, float* C,
 int M, int N, int K) {
+
     // 16B 对齐：两个 fragment 都按 float4 读取（LDS.128）
-    __shared__ __align__(16) float As[numStages][BM][BK]; // 128 
-    __shared__ __align__(16) float Bs[numStages][BK][BN]; //     64
+    __shared__ __align__(16) float As[numStages][BM][BK]; // 128 16
+    __shared__ __align__(16) float Bs[numStages][BK][BN]; // 16  64
 
     int r0 = blockIdx.y * BM;
     int c0 = blockIdx.x * BN;
     int tid = threadIdx.x;
 
-    // 计算 tileC 、写入C 时的线程排布（8 * 16）
+    // 计算 tileC 、写入C 时的线程排布（16 * 8）
     constexpr int C_BLOCK_X = 8;
     constexpr int C_BLOCK_Y = BLOCK_SIZE / C_BLOCK_X;  // = 16
     int c_thread_x = tid % C_BLOCK_X; // 0 ~ 7
@@ -230,7 +233,7 @@ int M, int N, int K) {
     constexpr int Tn = BN / C_BLOCK_X;  // = 8 跨步覆盖64列 由BN决定
 
     float Ct[Tm][Tn] = { 0.0f };
-    float a_frag[Tm][4] = { 0.0f }; // 存放float4数据
+    float a_frag[Tm][4] = { 0.0f }; // 执行两轮运输+计算，缩小体积至原先的一半 // 存放float4数据
     float b_frag[Tn] = { 0.0f }; // Tn==8，故优化为连续存储2个float4
 
 
@@ -281,7 +284,7 @@ int M, int N, int K) {
         pipe.consumer_wait();
         __syncthreads();
 
-        const int col0 = c_thread_x * Tn; // 0~7  *  8
+        const int col0 = c_thread_x * (sizeof(float4) / sizeof(float)); // 0~7  *  8
         const int stage = (k / BK) % numStages;
 
         #pragma unroll
@@ -294,7 +297,7 @@ int M, int N, int K) {
                 int row = c_thread_y + i * C_BLOCK_Y;
 
                 FLOAT4(*(a_frag[i])) = FLOAT4(As[stage][row][
-                    swizzle_col<BK / 4>(row, p)
+                swizzle_col<BK / 4>(row, p)
                 ]);
             }
 
@@ -305,7 +308,7 @@ int M, int N, int K) {
                 #pragma unroll
                 for (int offset = 0; offset < Tn; offset += 4) { // 每个线程的b_frag数组共Tn个位置，存放 Tn / 4 个float4数据
 
-                    FLOAT4(*(b_frag + offset)) = FLOAT4(Bs[stage][p + pp][col0 + offset]);
+                    FLOAT4(*(b_frag + offset)) = FLOAT4(Bs[stage][p + pp][col0 + offset * C_BLOCK_X]);
                 }
 
                 // 每读取完一行Bs，立即计算
@@ -321,23 +324,26 @@ int M, int N, int K) {
             }
         }
 
+
+
         __syncthreads(); //避免在本轮循环计算完成前，SMEM被下一轮数据覆盖
         pipe.consumer_release();
     }
+
 
     // 写回结果
     #pragma unroll
     for (int i = 0; i < Tm; i++) {
 
         int r = r0 + c_thread_y + i * C_BLOCK_Y;
-        int c = c0 + c_thread_x * Tn;
+        int c = c0 + c_thread_x * ( sizeof(float4) / sizeof(float) );
 
-        if (r < M && c < N) {
+        if (r < M && c + 3 < N) {
 
             #pragma unroll
             for (int offset = 0; offset < Tn; offset += 4) { // 每个线程的b_frag数组共Tn个位置，读取 Tn / 4 个float4数据
 
-                FLOAT4(C[r * N + c + offset]) = FLOAT4(Ct[i][offset]);
+                FLOAT4(C[r * N + c + offset * C_BLOCK_X]) = FLOAT4(Ct[i][offset]);
             }
         }
     }
