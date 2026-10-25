@@ -14,7 +14,7 @@
 
 namespace CUDAkernels {
 
-void instantiated_sgemm_block_tiling(cudaStream_t s, const float *A, const float *B, float *C, int M, int N, int K);
+void instantiated_sm89_fp32_gemm(cudaStream_t s, const float *A, const float *B, float *C, int M, int N, int K);
 
 } // namespace CUDAkernels
 
@@ -37,7 +37,7 @@ void check_f32_cuda_2d_contig(const Tensor& t, const char* name) {
 }  // namespace
 
 // 必须在匿名 namespace 之外：TORCH_BOX 把它的地址用作非类型模板实参。
-Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
+Tensor sm89_fp32_gemm(const Tensor& a, const Tensor& b) {
 
     check_f32_cuda_2d_contig(a, "a");
     check_f32_cuda_2d_contig(b, "b");
@@ -65,7 +65,7 @@ Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
     auto stream = torch::stable::accelerator::getCurrentStream(dev);
     cudaStream_t raw = reinterpret_cast<cudaStream_t>(stream.nativeHandle());
 
-    CUDAkernels::instantiated_sgemm_block_tiling(
+    CUDAkernels::instantiated_sm89_fp32_gemm(
         raw,
         a.const_data_ptr<float>(),
         b.const_data_ptr<float>(),
@@ -80,9 +80,9 @@ Tensor sgemm_v1(const Tensor& a, const Tensor& b) {
 
 // 声明算子的名称、形参列表、返回类型
 STABLE_TORCH_LIBRARY(CUDAkernels, m) {
-    m.def("sgemm_v1(Tensor a, Tensor b) -> Tensor");
+    m.def("sm89_fp32_gemm(Tensor a, Tensor b) -> Tensor");
 }
 // 挂到 CUDA dispatch key 下
 STABLE_TORCH_LIBRARY_IMPL(CUDAkernels, CUDA, m) {
-    m.impl("sgemm_v1", TORCH_BOX(&cudakernels_torch::sgemm_v1));
+    m.impl("sm89_fp32_gemm", TORCH_BOX(&cudakernels_torch::sm89_fp32_gemm));
 }

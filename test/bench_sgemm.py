@@ -25,13 +25,13 @@ torch.backends.cuda.matmul.fp32_precision="ieee"
 
 
 def calculate_test(A: torch.Tensor, B: torch.Tensor):
-    C_custom = cudakernels.sgemm_v1(A, B)
+    C_custom = cudakernels.sm89_fp32_gemm(A, B)
     C_torch = torch.mm(A, B)
 
     # 默认值 rtol=1.3e-6 atol=1e-5
     torch.testing.assert_close(C_custom, C_torch, rtol = 1e-4, atol = 1e-4)
 
-def various_input_correctness_test(M: int, K: int, N: int) -> None:
+def various_input_correctness_test(M: int, N: int, K: int) -> None:
 
     # 输入矩阵的元素值随机
     A = torch.randn((M, K), device="cuda", dtype=torch.float32)
@@ -56,7 +56,7 @@ def various_input_correctness_test(M: int, K: int, N: int) -> None:
 
     print(f"(M, N, K) : {M}, {N}, {K} case passed!!")
 
-def input_random_ncu_profiling(M: int, K: int, N: int) -> None :
+def input_random_ncu_profiling(M: int, N: int, K: int) -> None :
 
     A = torch.randn((M, K), device="cuda", dtype=torch.float32)
     B = torch.randn((K, N), device="cuda", dtype=torch.float32)
@@ -65,11 +65,11 @@ def input_random_ncu_profiling(M: int, K: int, N: int) -> None :
 
     # CUDAkernels warm up
     for _ in range(3):
-        C_custom = cudakernels.sgemm_v1(A, B)
+        C_custom = cudakernels.sm89_fp32_gemm(A, B)
 
     # profiling
     torch.cuda.nvtx.range_push("ncu_profile")
-    C_custom = cudakernels.sgemm_v1(A, B)
+    C_custom = cudakernels.sm89_fp32_gemm(A, B)
     torch.cuda.synchronize()
     torch.cuda.nvtx.range_pop()
 
@@ -77,7 +77,7 @@ def input_random_ncu_profiling(M: int, K: int, N: int) -> None :
 
     # cuBLAS warm up
     for _ in range(3):
-        C_custom = cudakernels.sgemm_v1(A, B)
+        C_custom = cudakernels.sm89_fp32_gemm(A, B)
 
     # profiling
     torch.cuda.nvtx.range_push("ncu_profile")
@@ -92,13 +92,29 @@ def input_random_ncu_profiling(M: int, K: int, N: int) -> None :
 
 
 # a）精度测试
-# various_input_correctness_test(2, 2, 2)
-# various_input_correctness_test(7, 13, 5)
-# various_input_correctness_test(31, 63, 47)
+# full-tile（多 stage、环形缓冲回绕）
 various_input_correctness_test(64, 64, 64)
-various_input_correctness_test(256, 512, 128)
-# various_input_correctness_test(127, 129, 65)
+various_input_correctness_test(64, 64, 48)
+various_input_correctness_test(64, 64, 80)
+various_input_correctness_test(128, 128, 128)
+various_input_correctness_test(256, 256, 256)
 various_input_correctness_test(1024, 1024, 1024)
+
+# partial-tile（M/N/K 边界）
+various_input_correctness_test(48, 48, 48)
+various_input_correctness_test(80, 80, 80)
+various_input_correctness_test(63, 63, 63)
+various_input_correctness_test(65, 65, 65)
+various_input_correctness_test(127, 129, 65)
+various_input_correctness_test(129, 127, 17)
+
+# K 非 4 倍数、非方阵和极小尺寸
+various_input_correctness_test(64, 68, 17)
+various_input_correctness_test(65, 67, 15)
+various_input_correctness_test(32, 96, 17)
+various_input_correctness_test(2, 3, 2)
+various_input_correctness_test(7, 5, 13)
+
 
 
 # b）Nsight Compute 性能分析
@@ -106,4 +122,18 @@ various_input_correctness_test(1024, 1024, 1024)
 # 95%  95%  96%  96%
 # 512 1024
 # 75% 93%
+
+input_random_ncu_profiling(16, 16, 16)
+input_random_ncu_profiling(32, 32, 32)
+input_random_ncu_profiling(64, 64, 64)
+input_random_ncu_profiling(128, 128, 128)
+input_random_ncu_profiling(256, 256, 256)
+input_random_ncu_profiling(512, 512, 512)
+input_random_ncu_profiling(1024, 1024, 1024)
+
+input_random_ncu_profiling(2048, 2048, 2048)
+input_random_ncu_profiling(3072, 3072, 3072)
+input_random_ncu_profiling(4096, 4096, 4096)
 input_random_ncu_profiling(5120, 5120, 5120)
+input_random_ncu_profiling(6144, 6144, 6144)
+input_random_ncu_profiling(8192, 8192, 8192)

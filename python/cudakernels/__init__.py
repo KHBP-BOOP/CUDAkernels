@@ -21,5 +21,5 @@ def _locate_ext() -> Path:
 # 此时执行静态初始化器，通过c++ API将算子的schema和实现注册进pytorch的Dispatcher
 torch.ops.load_library(str(_locate_ext()))
 
-sgemm_v1 = torch.ops.CUDAkernels.sgemm_v1
-__all__ = ["sgemm_v1"]
+sm89_fp32_gemm = torch.ops.CUDAkernels.sm89_fp32_gemm
+__all__ = ["sm89_fp32_gemm"]

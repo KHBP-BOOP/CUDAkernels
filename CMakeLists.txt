@@ -78,6 +78,7 @@ if(NCU_EXECUTABLE)
     # ncu编译参数
     set(_ncu_args
         --set basic
+        # --section ComputeWorkloadAnalysis
         --import-source on
 
         --nvtx --nvtx-include "ncu_profile/"
