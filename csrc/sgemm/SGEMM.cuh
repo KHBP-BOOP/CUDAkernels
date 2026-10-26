@@ -472,85 +472,78 @@ int M, int N, int K) {
 
     for (int stage = 0; stage < numStagesBefore; ++stage) {
 
-    int k0 = stage * BK; // K方向上的起始地址
-    store_tile_A<BM, BK, BLOCK_SIZE>(A, As[stage], M, K, r0, k0, tid, pipe);
-    store_tile_B<BN, BK, BLOCK_SIZE>(B, Bs[stage], K, N, c0, k0, tid, pipe);
+        int k0 = stage * BK; // K方向上的起始地址
+        store_tile_A<BM, BK, BLOCK_SIZE>(A, As[stage], M, K, r0, k0, tid, pipe);
+        store_tile_B<BN, BK, BLOCK_SIZE>(B, Bs[stage], K, N, c0, k0, tid, pipe);
 
-    pipe.producer_commit();
+        pipe.producer_commit();
     }
-
-
-    // // 保证启动pipeline前的numStages次load全部结束
-    // // 避免启动后首次consume时访问到脏数据
-    // __syncthreads();
 
 
     // K-Loop
     // 一次循环对应
     for (int k = 0; k < K; k += BK) {
 
-    int As_Bs_K_index = k + numStagesBefore * BK;
+        int As_Bs_K_index = k + numStagesBefore * BK;
 
-    pipe.producer_acquire();
-    if (As_Bs_K_index < K) { // 如果GMEM对应空间中仍有待拷贝的数据
+        pipe.producer_acquire();
+        if (As_Bs_K_index < K) { // 如果GMEM对应空间中仍有待拷贝的数据
 
-    int stage = (As_Bs_K_index / BK) % numStages; // k+1一定为BK的倍数
+            int stage = (As_Bs_K_index / BK) % numStages; // k+1一定为BK的倍数
 
-    store_tile_A<BM, BK, BLOCK_SIZE>(A, As[stage], M, K, r0, As_Bs_K_index, tid, pipe);
-    store_tile_B<BN, BK, BLOCK_SIZE>(B, Bs[stage], K, N, c0, As_Bs_K_index, tid, pipe);
-    }
+            store_tile_A<BM, BK, BLOCK_SIZE>(A, As[stage], M, K, r0, As_Bs_K_index, tid, pipe);
+            store_tile_B<BN, BK, BLOCK_SIZE>(B, Bs[stage], K, N, c0, As_Bs_K_index, tid, pipe);
+        }
 
-    // 包含未prefetch的空组。保证计数对齐
-    pipe.producer_commit();
-
-
-    pipe.consumer_wait();
-    __syncthreads();
-
-    const int col0 = c_thread_x * (sizeof(float4) / sizeof(float)); // 0~7  *  8
-    const int stage = (k / BK) % numStages;
-
-    #pragma unroll
-    for (int p = 0; p < BK; p += 4) {
-
-    // A: 每个输出 row 一条 LDS.128，一次拿到 p=pg..pg+3
-    #pragma unroll
-    for (int i = 0; i < Tm; ++i) {
-
-    int row = c_thread_y + i * C_BLOCK_Y;
-
-    FLOAT4(*(a_frag[i])) = FLOAT4(As[stage][row][
-    swizzle_col<BK / 4>(row, p)
-    ]);
-    }
-
-    // B: 每个 p 一条 LDS.128
-    #pragma unroll
-    for (int pp = 0; pp < 4; ++pp) {
-
-    #pragma unroll
-    for (int offset = 0; offset < Tn; offset += 4) { // 每个线程的b_frag数组共Tn个位置，存放 Tn / 4 个float4数据
-
-    FLOAT4(*(b_frag + offset)) = FLOAT4(Bs[stage][p + pp][col0 + offset * C_BLOCK_X]);
-    }
-
-    // 每读取完一行Bs，立即计算
-    #pragma unroll
-    for (int i = 0; i < Tm; ++i) {
-
-    #pragma unroll
-    for (int j = 0; j < Tn; ++j) {
-
-    Ct[i][j] += a_frag[i][pp] * b_frag[j];
-    }
-    }
-    }
-    }
+        // 包含未prefetch的空组。保证计数对齐
+        pipe.producer_commit();
 
 
+        pipe.consumer_wait();
+        __syncthreads();
 
-    __syncthreads(); //避免在本轮循环计算完成前，SMEM被下一轮数据覆盖
-    pipe.consumer_release();
+        const int col0 = c_thread_x * (sizeof(float4) / sizeof(float)); // 0~7  *  8
+        const int stage = (k / BK) % numStages;
+
+        #pragma unroll
+        for (int p = 0; p < BK; p += 4) {
+
+            // A: 每个输出 row 一条 LDS.128，一次拿到 p=pg..pg+3
+            #pragma unroll
+            for (int i = 0; i < Tm; ++i) {
+
+                int row = c_thread_y + i * C_BLOCK_Y;
+
+                FLOAT4(*(a_frag[i])) = FLOAT4(As[stage][row][
+                swizzle_col<BK / 4>(row, p)
+                ]);
+            }
+
+            // B: 每个 p 一条 LDS.128
+            #pragma unroll
+            for (int pp = 0; pp < 4; ++pp) {
+
+                #pragma unroll
+                for (int offset = 0; offset < Tn; offset += 4) { // 每个线程的b_frag数组共Tn个位置，存放 Tn / 4 个float4数据
+
+                    FLOAT4(*(b_frag + offset)) = FLOAT4(Bs[stage][p + pp][col0 + offset * C_BLOCK_X]);
+                }
+
+                // 每读取完一行Bs，立即计算
+                #pragma unroll
+                for (int i = 0; i < Tm; ++i) {
+
+                    #pragma unroll
+                    for (int j = 0; j < Tn; ++j) {
+
+                        Ct[i][j] += a_frag[i][pp] * b_frag[j];
+                    }
+                }
+            }
+        }
+
+        __syncthreads(); //避免在本轮循环计算完成前，SMEM被下一轮数据覆盖
+        pipe.consumer_release();
     }
 
 
@@ -558,37 +551,38 @@ int M, int N, int K) {
     #pragma unroll
     for (int i = 0; i < Tm; i++) {
 
-    int r = r0 + c_thread_y + i * C_BLOCK_Y;
-    int c = c0 + c_thread_x * ( sizeof(float4) / sizeof(float) );
+        int r = r0 + c_thread_y + i * C_BLOCK_Y;
+        int c = c0 + c_thread_x * ( sizeof(float4) / sizeof(float) );
 
-    if (N % 4 == 0) {
+        if (N % 4 == 0) {
 
-        if (r < M) {
+            if (r < M) {
 
-            #pragma unroll
-            for (int offset = 0; offset < Tn; offset += 4) {
+                #pragma unroll
+                for (int offset = 0; offset < Tn; offset += 4) {
 
-                const int col = c + offset * C_BLOCK_X;
-                if (col + 3 < N) {
-                    FLOAT4(C[r * N + col]) = FLOAT4(Ct[i][offset]);
+                    const int col = c + offset * C_BLOCK_X;
+                    if (col + 3 < N) {
+
+                        FLOAT4(C[r * N + col]) = FLOAT4(Ct[i][offset]);
+                    }
                 }
             }
         }
-    }
-    else {
+        else {
 
-        if (r < M) {
+            if (r < M) {
 
-            #pragma unroll
-            for (int offset = 0; offset < Tn; ++offset) {
+                #pragma unroll
+                for (int offset = 0; offset < Tn; ++offset) {
 
-                const int col = c + (offset / 4) * (C_BLOCK_X * 4) + offset % 4;
-                if (col < N) {
-                    C[r * N + col] = Ct[i][offset];
+                    const int col = c + (offset / 4) * (C_BLOCK_X * 4) + offset % 4;
+                    if (col < N) {
+                        C[r * N + col] = Ct[i][offset];
+                    }
                 }
             }
         }
-    }
     }
 }
 
