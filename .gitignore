@@ -1,8 +1,6 @@
-# out/
+# output files
 out/**
-
-# profiling reports
-reports/**
+test/csv/out/**
 
 # configuration directories
 test/.venv/**
@@ -15,5 +13,5 @@ test/.venv/**
 tmp/**
 
 # Python bytecode cache files
-python/cudakernels/__pycache__/**
+**/__pycache__/**
 

@@ -17,8 +17,9 @@ def _locate_ext() -> Path:
     
     return hits[-1]
 
-# 将共享库加载至当前线程，触发其中所有静态成员的静态初始化
-# 此时执行静态初始化器，通过c++ API将算子的schema和实现注册进pytorch的Dispatcher
+# 将kernel与相关wrapper生成为一个动态库
+# 操作系统调用dlopen()，将该共享库加载至import该python包的线程
+# 此时库中所有静态成员的动态初始化会被触发，通过c++ API将算子的schema和实现写进pytorch的Dispatcher
 torch.ops.load_library(str(_locate_ext()))
 
 sm89_fp32_gemm = torch.ops.CUDAkernels.sm89_fp32_gemm

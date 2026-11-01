@@ -202,8 +202,8 @@ __global__ void sm89_fp32_gemm(const float* A, const float* B, float* C,
 int M, int N, int K) {
 
     // 16B 对齐：两个 fragment 都按 float4 读取（LDS.128）
-    __shared__ __align__(16) float As[numStages][BM][BK]; // 128 16
-    __shared__ __align__(16) float Bs[numStages][BK][BN]; // 16  64
+    __shared__ __align__(16) float As[numStages][BM][BK]; // 64 16
+    __shared__ __align__(16) float Bs[numStages][BK][BN]; // 16 64
 
     int r0 = blockIdx.y * BM;
     int c0 = blockIdx.x * BN;
@@ -211,25 +211,25 @@ int M, int N, int K) {
 
     // 计算 tileC 、写入C 时的线程排布（16 * 8）
     constexpr int C_BLOCK_X = 8;
-    constexpr int C_BLOCK_Y = BLOCK_SIZE / C_BLOCK_X;  // = 16
+    constexpr int C_BLOCK_Y = BLOCK_SIZE / C_BLOCK_X;  // = 8
     int c_thread_x = tid % C_BLOCK_X; // 0 ~ 7
-    int c_thread_y = tid / C_BLOCK_X; // 0 ~ 15
+    int c_thread_y = tid / C_BLOCK_X; // 0 ~ 7
 
     // 16 * 8 threads 负责 128 * 64 个元素
     // 每个线程负责 Tm×Tn 个输出元素
-    constexpr int Tm = BM / C_BLOCK_Y;  // = 8 跨步覆盖128行 由BM、BLOCK_SIZE决定
+    constexpr int Tm = BM / C_BLOCK_Y;  // = 8 跨步覆盖64行 由BM、BLOCK_SIZE决定
     constexpr int Tn = BN / C_BLOCK_X;  // = 8 跨步覆盖64列 由BN决定
 
     float Ct[Tm][Tn] = { 0.0f };
     float a_frag[Tm][4] = { 0.0f }; // 执行两轮运输+计算，缩小体积至原先的一半 // 存放float4数据
-    float b_frag[Tn] = { 0.0f }; // Tn==8，故优化为连续存储2个float4
+    float b_frag[3][Tn] = { 0.0f }; // Tn==8，故优化为连续存储2个float4
 
 
 
     
     constexpr int A_BLOCK_X = BK / 4; // 4
-    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X; // 32
-    constexpr int A_TILES   = BM / A_BLOCK_Y; // 2
+    constexpr int A_BLOCK_Y = BLOCK_SIZE / A_BLOCK_X; // 16
+    constexpr int A_TILES   = BM / A_BLOCK_Y; // 4
     // 要求BM能被A_BLOCK_Y整除
     static_assert(BM % A_BLOCK_Y == 0);
     
@@ -339,6 +339,22 @@ int M, int N, int K) {
         const int col0 = c_thread_x * (sizeof(float4) / sizeof(float)); // 0~7  *  8
         const int stage = (k / BK) % numStages;
 
+
+        // 在外面一层对b_frag执行预取，减少计算前的LDS指令压力
+        // 预取Bs的第一行
+        #pragma unroll
+        for (int off = 0; off < Tn; off += 4) {
+            FLOAT4(*(b_frag[0] + off)) =
+                FLOAT4(Bs[stage][0][col0 + off * C_BLOCK_X]);
+        }
+
+        // 预取Bs的第二行
+        #pragma unroll
+        for (int off = 0; off < Tn; off += 4) {
+            FLOAT4(*(b_frag[1] + off)) = FLOAT4(Bs[stage][1][col0 + off * C_BLOCK_X]);
+        }
+
+
         #pragma unroll
         for (int p = 0; p < BK; p += 4) {
 
@@ -357,12 +373,6 @@ int M, int N, int K) {
             #pragma unroll
             for (int pp = 0; pp < 4; ++pp) {
 
-                #pragma unroll
-                for (int offset = 0; offset < Tn; offset += 4) { // 每个线程的b_frag数组共Tn个位置，存放 Tn / 4 个float4数据
-
-                    FLOAT4(*(b_frag + offset)) = FLOAT4(Bs[stage][p + pp][col0 + offset * C_BLOCK_X]);
-                }
-
                 // 每读取完一行Bs，立即计算
                 #pragma unroll
                 for (int i = 0; i < Tm; ++i) {
@@ -370,9 +380,27 @@ int M, int N, int K) {
                     #pragma unroll
                     for (int j = 0; j < Tn; ++j) {
 
-                        Ct[i][j] += a_frag[i][pp] * b_frag[j];
+                        // pp == 0, 1, 2, 3 ==
+                        // 00 01 10 11
+                        // 待计算的槽位依次为 00 01 10 00 
+                        Ct[i][j] += a_frag[i][pp] * b_frag[(p + pp) % 3][j];
                     }
                 }
+
+                
+                if (p + pp + 2 < BK) { // 最后两行已经被提前load，不需要再次load
+                    #pragma unroll
+                    for (int offset = 0; offset < Tn; offset += 4) { // 每个线程的b_frag数组共Tn个位置，存放 Tn / 4 个float4数据 // Tn==8
+
+                        // pp == 0, 1, 2, 3 ==
+                        // 00 01 10 11
+                        // 待存入的槽位依次为 10 00 01 10
+
+
+                        FLOAT4(*(b_frag[(p + pp + 2) % 3] + offset)) = FLOAT4(Bs[stage][p + pp + 2][col0 + offset * C_BLOCK_X]);
+                    }
+                }
+
             }
         }
 

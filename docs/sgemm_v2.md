@@ -55,20 +55,63 @@ FFMA / LDS = 4 * Tm * Tn / (Tm + Tn)
 
 *调整后执行时间减慢，但occupancy 50%左右、内存计算吞吐均70%左右*
 
-- 考虑寄存器数组存放float2
+## 分析
+Stall short scoreboard成主因
 
-- 考虑split-k（k取2、3、4、5）
-
+## 调整
 - 考虑shuffle warp内广播，以减少LDS指令数；但同样需LSU参与且重构范围较大，暂不考虑
 
-- 去除多余的和边界判断、地址计算相关的指令
+- load b-frag寄存器过程采用双缓冲方式进行
+但注意到One or More Eligible [%]	70.95
+指令发射率并不低
+且ALU管线（地址计算，大概率对应swizzle部分）利用率与LSU管线接近、CBU管线（分支判断）仅次于FFMA、LSU、ALU
+代码中每次storeAs、Bs均进行一次swizzle相关地址计算、大量用于边界判断的if语句
+
+考虑先降低ALU、CBU管线利用率，再视情况考虑load b-frag过程的pipeline处理
+考虑根据M、N、K值分析边界判断的必要性；同时去除多余的和边界判断、地址计算相关的指令，减少每warp执行的指令数，直接性地缩短执行时间
+
 对于单个线程而言 M, N, K, r0, c0, k0, tid是固定值，无需每次调用store_load_*时都算一遍
 1. store As、Bs过程存在多余判断
 分别对应`if (i < BM)`、`if (j < BK)`，此判断非必需
 2. 解耦 处理full size 与 处理任意size ，提供两种解决方法：`store_tile_*` `store_tile_*_full`
-
 3. swizzle地址计算
-*出现正优化，执行时间 331520 ns*
+*v2.2出现正优化，执行时间 331520 ns*
 
-- load b-frag寄存器过程采用双缓冲方式进行
+
+stall short scoreboard比值大于1
+pipeline
+
+*v2.3  331712 ns*
+
+stall short scoreboard比值仍为1.09
+计算前有4条LDS.128
+考虑pp循环中设计为先计算再预取
+
+*执行时间、short scoreboard stall无变化*
+这是因为计算前总会等待一次拷贝
+
+active很多，eligible不足50%
+fma lite成瓶颈
+
+表明：对LDS的依赖关系无法解决，导致大量active warps无法进入eligible状态
+40.62%的stall采样采集于内积计算，该步的细分stall原因中short scoreboard占比39.29%
+提高指令流的平衡性，即访存与计算尽量交替进行
+*执行时间缩短至328ms*
+
+考虑3 buffer
+
+先存0，1槽位
+算0，存2
+算1，存0
+算2，存1
+算0，存2
+...
+
+*无明显提升short scoreboard维持原值*
+
+BZ设为64，此时Tm==Tn==8，提高访存比
+*稳定在318144 ns*
+
+
+
 
