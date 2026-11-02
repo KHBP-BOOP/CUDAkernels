@@ -1,3 +1,8 @@
+// TODO :
+// 更细粒度的分配策略
+// 针对小矩阵的split-K
+// 按 shape 的 tile/split-K 启发式选择
+
 #include "sgemm/SGEMM.cuh"
 
 namespace CUDAkernels {
@@ -8,7 +13,6 @@ void instantiated_sm89_fp32_gemm(cudaStream_t s, const float *A, const float *B,
     constexpr int BN = 64; // 64
     constexpr int numStages = 2;
 
-    // TODO : 更细粒度的分配策略
     // BM、BLOCK_SIZE分类讨论
     if (M < 1024 && N < 1024 && K < 1024) { // 小矩阵
 
