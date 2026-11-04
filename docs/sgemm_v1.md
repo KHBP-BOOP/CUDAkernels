@@ -1,14 +1,5 @@
 # v1
 
-中间版本
-v1.1 load阶段加入跨步循环（可在编译期内展开），设定BM = BN = 64，BK = 32，BZ = 256
-v1.2 v1.2基础上加入寄存器数组frag
-v1.3 线程读取向量化的As、Bs，
-XOR swizzle，AsBs的存储显式规定为16字节对齐
-v1.4 pipeline memcpy_async
-
-最终版本
-
 ## 分析
 
 首先判断工作负载是否足够高
@@ -69,10 +60,12 @@ v1.3出现正优化，从v1.2的 549312 ns 提升到 433920 ns
 
 
 ## 分析
-- L1TEX内部LSU数据管线占用率偏高：requests/wavefronts大致为1/3，LDS的访问模式可能不佳
+- L1TEX内部LSU数据管线占用率偏高：requests/wavefronts大致为1/3
 STS指令的requests/wavefronts == 1/4
-二者访问方式可能都不佳
-定位至float4数据从寄存器存入As、Bs过程
+定位至As、Bs store至寄存器a-frag、b-frag过程，GMEM中的float4数据从寄存器存入As、Bs过程
+但
+derived__memory_l1_wavefronts_shared_excessive
+这通常表明访问模式无明显异常
 
 - Stall Short Scoreboard、Stall MIO Throttle、Stall Long Scoreboard均异常偏高
 long定位于load As、Bs的STS.128，ta们都依赖紧邻的LDG.E.128返回的数据

@@ -146,7 +146,7 @@ if __name__ == "__main__":
     # input_random_ncu_profiling(256, 256, 256, times_each_size) # 88%
 
     # input_random_ncu_profiling(512, 512, 512, times_each_size) # 99%
-    # input_random_ncu_profiling(1024, 1024, 1024, times_each_size) # 101%
+    input_random_ncu_profiling(1024, 1024, 1024, times_each_size) # 101%
     # input_random_ncu_profiling(2048, 2048, 2048, times_each_size) # 98%
     # input_random_ncu_profiling(3072, 3072, 3072, times_each_size) # 98%
     # input_random_ncu_profiling(4096, 4096, 4096, times_each_size) # 98%

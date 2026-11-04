@@ -209,13 +209,13 @@ int M, int N, int K) {
     int c0 = blockIdx.x * BN;
     int tid = threadIdx.x;
 
-    // 计算 tileC 、写入C 时的线程排布（16 * 8）
+    // 计算 tileC 、写入C 时的线程排布（8 * 8）
     constexpr int C_BLOCK_X = 8;
     constexpr int C_BLOCK_Y = BLOCK_SIZE / C_BLOCK_X;  // = 8
     int c_thread_x = tid % C_BLOCK_X; // 0 ~ 7
     int c_thread_y = tid / C_BLOCK_X; // 0 ~ 7
 
-    // 16 * 8 threads 负责 128 * 64 个元素
+    // 8 * 8 threads 负责 64 * 64 个元素
     // 每个线程负责 Tm×Tn 个输出元素
     constexpr int Tm = BM / C_BLOCK_Y;  // = 8 跨步覆盖64行 由BM、BLOCK_SIZE决定
     constexpr int Tn = BN / C_BLOCK_X;  // = 8 跨步覆盖64列 由BN决定
@@ -234,8 +234,8 @@ int M, int N, int K) {
     static_assert(BM % A_BLOCK_Y == 0);
     
     constexpr int B_BLOCK_X = BN / 4; // 16
-    constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X; // 8
-    constexpr int B_TILES   = BK / B_BLOCK_Y; // 2
+    constexpr int B_BLOCK_Y = BLOCK_SIZE / B_BLOCK_X; // 4
+    constexpr int B_TILES   = BK / B_BLOCK_Y; // 4
     // 要求 BK 能被 B_BLOCK_Y 整除
     static_assert(BK % B_BLOCK_Y == 0);
 

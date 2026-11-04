@@ -26,6 +26,12 @@ Tn被设定为8，意味着每个线程从SMEM读取两次（这两次读取为�
 
 
 ## 调整
+
+- XOR swizzle 并 将AsBs的存储显式规定为16字节对齐
+
+- 调整写回过程的布局，在一定程度上保证连续线程读取连续数据
+
+
 v2.1出现正优化，绝对运行时间由 v1.4 382272 ns 提升至 360672 ns
 
 ## 分析
@@ -34,8 +40,6 @@ Memory Throughput [%]	43.39
 可能受限于延迟过大
 
 - stall原因中not-selected占比最大
-
-- LDS、LDGSTS指令对应的wavefronts/requests比例过大
 
 - 理论occupancy仍低至25%
 严重受限于每thread寄存器数量以及每block SMEM大小
@@ -56,7 +60,7 @@ FFMA / LDS = 4 * Tm * Tn / (Tm + Tn)
 *调整后执行时间减慢，但occupancy 50%左右、内存计算吞吐均70%左右*
 
 ## 分析
-Stall short scoreboard成主因
+主因在于v1中内积计算时的short scoreboard stall
 
 ## 调整
 - 考虑shuffle warp内广播，以减少LDS指令数；但同样需LSU参与且重构范围较大，暂不考虑
@@ -67,7 +71,7 @@ Stall short scoreboard成主因
 且ALU管线（地址计算，大概率对应swizzle部分）利用率与LSU管线接近、CBU管线（分支判断）仅次于FFMA、LSU、ALU
 代码中每次storeAs、Bs均进行一次swizzle相关地址计算、大量用于边界判断的if语句
 
-考虑先降低ALU、CBU管线利用率，再视情况考虑load b-frag过程的pipeline处理
+考虑先降低ALU、CBU管线利用率，再视情况考虑load b-frag过程的2 buffer处理
 考虑根据M、N、K值分析边界判断的必要性；同时去除多余的和边界判断、地址计算相关的指令，减少每warp执行的指令数，直接性地缩短执行时间
 
 对于单个线程而言 M, N, K, r0, c0, k0, tid是固定值，无需每次调用store_load_*时都算一遍
@@ -79,7 +83,7 @@ Stall short scoreboard成主因
 
 
 stall short scoreboard比值大于1
-pipeline
+考虑load b-frag过程的2 buffer处理
 
 *v2.3  331712 ns*
 
@@ -96,6 +100,8 @@ fma lite成瓶颈
 表明：对LDS的依赖关系无法解决，导致大量active warps无法进入eligible状态
 40.62%的stall采样采集于内积计算，该步的细分stall原因中short scoreboard占比39.29%
 提高指令流的平衡性，即访存与计算尽量交替进行
+BK loop外的预取改为预取2个slot
+
 *执行时间缩短至328ms*
 
 考虑3 buffer
@@ -107,9 +113,9 @@ fma lite成瓶颈
 算0，存2
 ...
 
-*无明显提升short scoreboard维持原值*
+*无明显提升 short scoreboard维持原值*
 
-BZ设为64，此时Tm==Tn==8，提高访存比
+BZ设为64，此时Tm==Tn==8，提高访存比，减少指令数
 *稳定在318144 ns*
 
 
